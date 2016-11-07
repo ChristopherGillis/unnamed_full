@@ -1,0 +1,5 @@
+name = Arbitrary Payments
+description = Standalone form for donations or collecting offline payments
+core = 7.x
+dependencies[] = payment (>1.0)
+package = Payment

@@ -1,0 +1,4 @@
+name = Field Display Only
+description = Display a piece of html in the form, instead of an input
+package = Fields
+core = 7.x

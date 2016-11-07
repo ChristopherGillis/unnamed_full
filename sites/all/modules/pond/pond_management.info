@@ -1,0 +1,6 @@
+name = Pond Management
+description = Tools for managers of all levels
+package = "Pond Modules"
+dependencies[] = pond
+dependencies[] = entity_duplicates
+core = 7.x

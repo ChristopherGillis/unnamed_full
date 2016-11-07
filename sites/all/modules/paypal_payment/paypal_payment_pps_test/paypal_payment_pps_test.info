@@ -1,0 +1,13 @@
+name = PayPal Payments Standard tests
+description = Supports PayPal Payments Standard testing.
+package = Payment
+dependencies[] = paypal_payment_pps
+core = 7.x
+hidden = TRUE
+
+; Information added by drupal.org packaging script on 2013-06-14
+version = "7.x-1.0"
+core = "7.x"
+project = "paypal_payment"
+datestamp = "1371202252"
+

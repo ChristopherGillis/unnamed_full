@@ -1,0 +1,7 @@
+name = Pond Payments
+description = All the money stuff
+package = "Pond Modules"
+dependencies[] = pond
+dependencies[] = payment
+dependencies[] = payment_arbitrary
+core = 7.x

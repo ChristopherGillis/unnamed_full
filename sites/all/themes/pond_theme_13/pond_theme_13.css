@@ -1,0 +1,1112 @@
+/* Template Stuff */
+/* Red = #e2001a */
+/* Blue = #026fc6 */
+
+#branding {
+  background: url("images/back.gif") repeat-x bottom black;
+  color:#FFF;
+  min-height:68px;
+  padding:0;
+  margin:0;
+}
+
+#logo-rf {
+  width:237px;
+  height:50px;
+  background: url("images/logo-rf.gif") no-repeat;
+  margin-top:50px;
+  float:left;
+  text-indent: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.region-header {
+  margin-left: 250px;
+  padding-top: 50px;
+  min-height: 50px;
+}
+#branding .region-header .block {
+  float:none;
+}
+#logo-pond {
+  width:128px;
+  height:120px;
+  background: url("images/logo-pond.gif") bottom no-repeat;
+  float:right;
+  margin-top: -79px;
+}
+#top-nav {
+  height:41px;
+  padding:0;
+}
+.squeeze {
+  width:960px;
+  margin: 0 auto;
+}
+
+ul.links.main-menu {
+  display:block;
+  padding-top:12px;
+  clear:left;
+}
+
+.main-menu a {
+  color:#FFF;
+  padding:10px;
+  display:block;
+  float:left;
+}
+.main-menu .first a {
+  padding-left:0;
+}
+.main-menu .last a {
+  padding-right:0;
+}
+
+#page {
+  padding-top:0;
+}
+
+h1.page-title {
+  color:#e2001a;
+  font-size:1em;
+  float:left;
+}
+
+.page-apply h1.page-title {
+  color: #fff;
+  background: #026fc6;
+  text-align: center;
+  display:block;
+  float:none;
+  font-size: 1.5em;
+  padding: 10px;
+  margin-top:40px;
+}
+
+.page-apply .add-or-remove-shortcuts,
+.page-dash .add-or-remove-shortcuts {
+  display:none;
+}
+
+ul.primary.tabs {
+  float:none;
+  clear:left;
+}
+
+ul.primary li a:link, 
+ul.primary li a.active, 
+ul.primary li a:active, 
+ul.primary li a:visited, 
+ul.primary li a:hover {
+  background-color:#FFF;
+  border-color: #e3e3e3;
+  color:#7e7e7e;
+  border-radius:3px;
+  border-bottom-width: 1px;
+  padding: 0 20px;
+  font-weight: normal;
+}
+ul.primary li a:hover {
+  border-bottom: 1px solid #e2001a;
+}
+ul.primary li.active a,
+ul.primary li.active a.active {
+  background-color:#e2001a;
+  border-color: #bc2b1b;
+  color:#fff;
+}
+
+/* Steps in App Form */
+
+ul.steps {
+  float:none;
+  clear:left;
+  margin:0;
+}
+
+ul.steps li {
+  background-color:#FFF;
+  border-color: #e3e3e3;
+  color:#7e7e7e;
+  border-radius:3px;
+  padding: 0 40px;
+  font-weight: normal;
+  list-style: none;
+  display: block;
+  float: left;
+  height: 2.60em;
+  line-height: 2.60em;
+  border-width: 1px;
+  border-style: solid;
+  margin: 0 1px;
+  text-transform: uppercase;
+  font-size: 1em;
+}
+
+ul.steps li.active {
+  background-color:#e2001a;
+  border-color: #bc2b1b;
+  color:#fff;
+}
+ul.steps li.complete {
+  background-color:#22c941;
+  border-color: #e3e3e3;
+  color:#fff;
+}
+
+
+
+/* Home Page Stuff */
+
+#home-graphic {
+  width:613px;
+  height:518px;
+  margin: 10px;
+  float:left;
+}
+
+#home-blocks {
+  width:250px;
+  margin-left: 700px;
+}
+
+#home-blocks .home-block {
+  padding-top:30px;
+}
+
+#home-blocks h2 {
+  color:#e2001a;
+  font-size:1em;
+  font-weight:bold;
+  margin:0;
+}
+
+#home-blocks .form-item,
+#home-blocks .form-actions {
+  margin:0;
+}
+
+#home-blocks .form-text {
+  width:228px;
+  padding:10px;
+  border-radius:4px;
+  border:1px solid #d1d1d1;
+}
+
+#home-blocks .links {
+  float:left;
+  color:#026fc6;
+  font-weight: bold;
+}
+
+#home-blocks .form-submit,
+.dash-block .form-submit {
+  background: #e2001a;
+  color: #fff;
+  border-radius: 5px;
+  text-transform: uppercase;
+  padding: 8px 20px;
+  font-size: 1em;
+  margin: 0;
+  width:250px;
+}
+
+#home-blocks #user-login-form .form-submit,
+.dash-block .form-submit {
+  float: right;
+  width: auto;
+}
+
+.pond-home-block .description {
+  display:none;
+}
+
+.pond-home-block form {
+  padding:10px;
+}
+
+.pond-home-block .form-item {
+  margin:0;
+}
+
+.pond-home-block .form-text {
+  width:260px;
+  padding:10px;
+}
+
+.pond-home-block .form-submit {
+  background: #d1010e;
+  color:#FFF;
+  border-color: #d1010e;
+  float:right;
+}
+
+
+/* #### Rego Form Stuff #### */
+
+/* Standard Elements */
+
+form h3 {
+  margin-top:40px;
+  margin-bottom:0;
+}
+
+select.form-select {
+  height:25px;
+}
+select.form-select[multiple] {
+  height:auto;
+}
+
+.field-widget-date-select {
+  padding-bottom:12px;
+}
+
+input.form-text {
+  padding:10px;
+  display:block;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+}
+
+span.field-prefix {
+  float:left;
+  padding:6px;
+}
+
+.form-type-checkboxes .form-type-checkbox {
+  padding:0;
+  white-space: nowrap;
+}
+
+.form-wrapper.field-type-datetime fieldset .fieldset-legend,
+.form-wrapper.field-type-datetime fieldset .fieldset-wrapper {
+  padding:0;
+  text-transform: none;
+}
+
+.page-apply input.form-submit {
+  background:#038ed7;
+  color:#fff;
+  border-radius:2px;
+  text-transform: uppercase;
+  border: 1px solid #026bc4;
+  float:right;
+  padding:8px;
+  width:185px;
+}
+
+#edit-finish {
+  background: #e4001c;
+  border-color: #bc2b1b;
+}
+
+/* clearfix */
+.form-type-checkboxes:after,
+.form-type-radios:after,
+.form-wrapper.field-name-field-user-gender:after,
+.form-type-password-confirm:after,
+.form-wrapper.field-name-field-passport-issued:after {
+  content: ".";
+  display: block;
+  height: 0;
+  clear: both;
+  visibility: hidden;
+}
+
+/* Full Width */
+.form-item-user-address-lookup-field .form-text,
+.form-item-new-church-address-lookup-field .form-text,
+.form-item-new-referee-church-address-lookup-field .form-text {
+  width:960px;
+  margin:0;
+}
+
+/* Full Width in a Fieldset (-15px on each side) */
+.form-item-user-address-lookup-field .form-text,
+.form-item-new-church-address-lookup-field .form-text,
+.form-item-new-referee-church-address-lookup-field .form-text {
+  width:930px;
+  margin:0;
+}
+
+/* Half Width */
+.form-item-user-mail .form-text,
+.form-item-user-mail-confirm .form-text,
+.form-wrapper.field-name-field-last-name .form-text,
+.form-wrapper.field-name-field-user-phone-other .form-text,
+.form-wrapper.field-name-field-address-suburb .form-text,
+.form-wrapper.field-name-field-address-country .form-text,
+.form-wrapper.field-name-field-bluecard-number .form-text,
+.form-wrapper.field-name-field-emergency-name .form-text,
+.form-wrapper.field-name-field-emergency-relationship .form-text,
+.form-wrapper.field-name-field-emergency-phone .form-text,
+.form-wrapper.field-name-field-emergency-alternative .form-text,
+.form-item-church .form-select,
+.form-item-referee-church .form-select,
+.form-item-referee .form-select,
+.form-wrapper.field-name-field-medical .form-text,
+.form-item-user-user-password .password-parent,
+.form-item-user-user-password .confirm-parent,
+.form-wrapper.field-name-field-passport-name-given .form-text,
+.form-wrapper.field-name-field-passport-name-family .form-text,
+.form-wrapper.field-name-field-passport-nationality .form-text,
+.form-wrapper.field-name-field-passport-country .form-text,
+.form-wrapper.field-name-field-passport-number .form-text {
+  width:475px;
+  margin:0;
+}
+
+/* Half Width in a Fieldset (-15px) */
+.fieldset-wrapper .form-wrapper.field-name-field-address-suburb .form-text,
+.fieldset-wrapper .form-wrapper.field-name-field-address-country .form-text,
+.form-item-new-referee-referee-name .form-text,
+.form-wrapper.field-name-field-referee-email .form-text,
+.form-wrapper.field-name-field-referee-mobile-number .form-text,
+.form-wrapper.field-name-field-referee-phone-work .form-text,
+.form-item-new-church-church-name .form-text,
+.form-item-new-referee-church-church-name .form-text,
+.form-wrapper.field-name-field-church-phone .form-text,
+.form-wrapper.field-name-field-church-pastor-senior .form-text,
+.form-wrapper.field-name-field-church-pastor-youth .form-text,
+.form-wrapper.field-name-field-church-pastor-yads .form-text {
+  width:460px;
+  margin:0;
+}
+
+/* Quarter Width */
+.form-item-location .form-select,
+.form-item-role .form-select,
+.form-type-checkboxes .form-type-checkbox,
+.form-wrapper.field-name-field-user-gender,
+.form-wrapper.field-name-field-user-dob,
+.form-wrapper.field-name-field-is-chaplain,
+.form-wrapper.field-name-field-is-chaplain-at .form-text,
+.form-wrapper.field-name-field-church-attendance .form-select,
+.form-wrapper.field-name-field-church-involvement .form-text,
+.form-wrapper.field-name-field-referee-position-other .form-text,
+.form-wrapper.field-name-field-shirt-size .form-select,
+.form-wrapper.field-name-field-hoodie-size .form-select,
+.form-wrapper.field-name-field-shirt-size-extra .form-select,
+.form-wrapper.field-name-field-memorabillia-size-extra .form-select,
+.form-wrapper.field-name-field-hoodie-size-extra .form-select,
+.form-item-user-user-password-pass1 .form-text,
+.form-item-user-user-password-pass2 .form-text,
+.form-wrapper.field-name-field-passport-expiry,
+.form-wrapper.field-name-field-passport-issued,
+.password-strength {
+  width:230px;
+  margin:0;
+}
+
+/* Quarter Width in a Fieldset (First Only!) */
+.form-wrapper.field-name-field-referee-position .form-select {
+  width:215px;
+  margin:0;
+}
+
+/* Tiny Width */
+.form-wrapper.field-name-field-prefix-name .form-select,
+.form-wrapper.field-name-field-phone-type .form-select,
+.form-wrapper.field-name-field-address-street-number .form-text,
+.form-wrapper.field-name-field-address-postcode .form-text {
+  width:85px;
+  margin:0;
+}
+
+/* Half Width minus Tiny */
+.form-wrapper.field-name-field-first-name .form-text,
+.form-wrapper.field-name-field-user-phone-mobile .form-text,
+.form-wrapper.field-name-field-address-street-name .form-text,
+.form-wrapper.field-name-field-address-state .form-text {
+  width:380px;
+  margin:0;
+}
+
+/* Half Width minus Tiny in a Fieldset (First Only!) */
+.fieldset-wrapper .form-wrapper.field-name-field-address-street-name .form-text,
+.fieldset-wrapper .form-wrapper.field-name-field-address-state .form-text {
+  width:365px;
+  margin:0;
+}
+
+/* The Left Floats */
+.form-type-checkboxes .form-type-checkbox,
+.form-type-radios .form-type-radio,
+.form-item-location,
+.form-item-user-mail,
+.form-wrapper.field-name-field-prefix-name,
+.form-wrapper.field-name-field-first-name,
+.form-wrapper.field-name-field-user-phone-mobile,
+.form-wrapper.field-name-field-phone-type,
+.form-wrapper.field-name-field-user-dob,
+.form-wrapper.field-name-field-user-gender,
+.form-wrapper.field-name-field-address-street-number,
+.form-wrapper.field-name-field-address-street-name,
+.form-wrapper.field-name-field-address-postcode,
+.form-wrapper.field-name-field-address-state,
+.form-wrapper.field-name-field-bluecard-number,
+.form-wrapper.field-name-field-emergency-name,
+.form-wrapper.field-name-field-emergency-phone,
+.form-wrapper.field-name-field-is-chaplain,
+.form-item-church,
+.form-wrapper.field-name-field-church-attendance,
+.form-item-referee-church,
+.form-item-referee,
+.form-item-new-referee-referee-name,
+.form-wrapper.field-name-field-referee-mobile-number,
+.form-wrapper.field-name-field-referee-position,
+.form-item-new-church-church-name,
+.form-item-new-referee-church-church-name,
+.form-wrapper.field-name-field-church-pastor-senior,
+.form-wrapper.field-name-field-shirt-size,
+.form-wrapper.field-name-field-shirt-size-extra,
+.form-wrapper.field-name-field-memorabillia-size-extra,
+.form-item-dt-expiry-month,
+.form-item-user-user-password .password-parent,
+.form-wrapper.field-name-field-passport-number,
+.form-wrapper.field-name-field-passport-name-given,
+.form-wrapper.field-name-field-passport-nationality,
+.form-wrapper.field-name-field-passport-expiry,
+.form-wrapper.field-name-field-passport-issued
+{
+  float:left;
+  margin-right:10px;
+}
+
+/* The Left Clears */
+.group-church,
+.group-extra-merch,
+.form-wrapper.field-name-field-user-phone-mobile,
+.form-wrapper.field-name-field-user-dob,
+.form-wrapper.field-name-field-passport-nationality,
+.form-wrapper.field-name-field-passport-name-given,
+.form-wrapper.field-name-field-has-travelled,
+#edit-church-info,
+#edit-referee-church-info {
+  clear:left;
+}
+
+/* Inline Label Height Fix */
+.form-item-church-other,
+.form-item-referee-church-new,
+.form-item-referee-other {
+  padding-top:25px;
+}
+
+/* Checkbox height fix */
+.form-item-church-other,
+.form-item-referee-church-other,
+.form-item-referee-other {
+  padding-bottom:20px;
+}
+
+/* Extra margin for quarters */
+.form-wrapper.field-name-field-user-gender {
+  margin-left:5px;
+}
+
+/* Less margin for last floats */
+.form-wrapper.field-name-field-passport-issued {
+  margin-right:0;
+}
+
+
+.form-item-user-user-password-pass2 {
+  clear:none;
+  float:left;
+}
+.password-suggestions {
+  /*Overriding with important because jQuery sets this in HTML!*/
+  display:none !important;
+}
+
+.field-widget-date-select fieldset { border:none; padding-top:1.9em; margin:0; }
+.field-widget-date-select .fieldset-wrapper { padding-bottom:0; }
+.field-widget-date-select .form-type-date-select { border:none; }
+.field-widget-date-select .date-padding { padding:0; }
+
+.field-name-field-experience .form-checkboxes .form-type-checkbox {
+  width:auto;
+  margin-right:15px;
+}
+
+.field-widget-field-displayonly p { margin:0; }
+
+#edit-prices .row-total td {
+  background: #e2001a;
+  color: #fff;
+}
+
+
+.group-address {
+  border-bottom:1px solid #BEBEBE;
+}
+.group-address.disabled {
+  border-top:1px solid #BEBEBE;
+  background:#E4E4E4;
+  color:#BEBEBE;
+}
+.group-address.disabled input {
+  border:1px solid #BEBEBE;
+  color:#888;
+}
+
+.group-old-address {
+  display:none;
+}
+
+#tc {
+  height: 200px;
+  padding: 10px; 
+  border: 1px solid #BBB; 
+  overflow: auto;
+}
+
+/* "New Entity" fieldsets */
+#edit-new-church,
+#edit-new-referee-church,
+#edit-new-referee {
+  background-color: #E5E5E5;
+}
+
+
+/* Payment Form Stuff */
+
+#payway-payment-form .form-item-dt-expiry-month,
+#payway-payment-form #edit-expiry,
+#payway-payment-form #edit-user
+{
+  float:left;
+  margin-right:10px;
+}
+
+#payway-payment-form #edit-expiry { width:150px; }
+
+#payway-payment-form fieldset#edit-expiry,
+#payway-payment-form fieldset#edit-expiry .fieldset-legend,
+#payway-payment-form fieldset#edit-expiry .fieldset-wrapper
+{ border:none; margin:0; padding:0; }
+
+#payway-payment-form fieldset#edit-expiry .fieldset-wrapper {
+  padding-top:20px;
+}
+
+
+
+/* #### Location Management Form Stuff #### */
+
+/* Half Width (pretty safe at 400px) */
+.page-admin-config-pond-locations .field-name-field-block-label,
+.page-admin-config-pond-locations .field-name-field-regos-cutoff,
+.page-admin-config-pond-locations .field-name-field-accommodation-options,
+.page-admin-config-pond-locations .field-name-field-price-early-accom,
+.page-admin-config-pond-locations .field-name-field-price-early-rego,
+.page-admin-config-pond-locations .field-name-field-price-normal-accom,
+.page-admin-config-pond-locations .field-name-field-price-normal-rego,
+.page-admin-config-pond-locations .field-name-field-dietary-discount,
+.page-admin-config-pond-locations .start-date-wrapper,
+.page-admin-config-pond-locations .end-date-wrapper {
+  width:390px;
+}
+/* Hard Left Float */
+.page-admin-config-pond-locations .roles-wrapper .field-name-field-regos-cutoff,
+.page-admin-config-pond-locations .field-name-field-block-label,
+.page-admin-config-pond-locations .start-date-wrapper,
+.page-admin-config-pond-locations .field-name-field-price-early-accom,
+.page-admin-config-pond-locations .field-name-field-price-normal-accom {
+  float:left;
+  clear:left;
+  margin-right:10px;
+  margin-left:0;
+}
+/* Right Side */
+.page-admin-config-pond-locations .roles-wrapper .field-name-field-accommodation-options,
+.page-admin-config-pond-locations .field-name-field-regos-cutoff,
+.page-admin-config-pond-locations .field-name-field-price-early-rego,
+.page-admin-config-pond-locations .field-name-field-price-normal-rego {
+  margin-left:400px;
+}
+
+/* Inner Fields */
+.page-admin-config-pond-locations .field-name-field-regos-cutoff .form-text,
+.page-admin-config-pond-locations .field-name-field-block-label .form-text {
+  width:100%;
+}
+
+/* User Dashboard Stuff */
+
+.page-user .tabs.primary {
+  display:none;
+}
+
+.profile .group-right {
+  float:right;
+  width:220px;
+}
+.profile .group-left {
+  float:left;
+  width:160px;
+}
+.profile .group-centre {
+  margin: 0 240px 0 180px;
+}
+
+.profile .group-right .form-item-payment-amount .field-prefix {
+  width:8px;
+}
+.profile .group-right .form-item-payment-amount .form-text {
+  width:175px;
+}
+.profile .group-right .form-item-payment-amount label {
+  display:none;
+}
+
+.profile h3 {
+  color:#e2001a;
+  font-size:1em;
+  border:none;
+}
+
+.profile .profile-block-content,
+.profile .group-personal {
+  border:1px solid #bebfb9;
+  padding:10px;
+}
+
+.profile .application-status .profile-block-content {
+  text-align: center;
+  font-weight: bold;
+  font-size: 2em;
+  color: grey;
+  padding-top:10px;
+  padding-bottom:10px;
+}
+
+.profile .payment-details .profile-block-content {
+  padding:0;
+}
+.profile .payment-details .profile-block-content table,
+.profile .payment-details .profile-block-content tr {
+  border:none;
+}
+
+.profile .button.profile-block-edit {
+  float:right;
+}
+.profile .button.profile-upload,
+.profile #payment-arbitrary-form .form-submit {
+  width:160px;
+  display:block;
+  padding:4px 0;
+  margin:0 auto;
+}
+
+.profile .button,
+.profile .button:link,
+.profile .button:visited,
+.profile .button:hover,
+.profile .button:active,
+.profile #payment-arbitrary-form .form-submit {
+  border-radius: 3px;
+  background: #e2001a;
+  border-color: #bc2b1b;
+  color: #fff;
+}
+
+
+.page-user-edit .group-account {
+  float:left;
+  width:475px;
+  margin-right:10px;
+}
+.page-user-edit .group-photo {
+  border:1px solid grey;
+  margin-left:485px;
+  padding:10px;
+}
+.page-user-edit .image-widget {
+  height:140px;/* Fix a weird bug where clearfix adds massive height */
+}
+.page-user-edit .group-personal {
+  clear:left;
+}
+
+/*
+.page-user .panel-pane,
+.page-user-edit .field-group-div {
+  background:#4399E9;
+  color:#FFF;
+}
+
+.page-user-edit .field-group-div .form-wrapper {
+  float:none;
+}
+
+.page-user-edit .field-group-div label {
+  width:135px;
+  float:left;
+  padding-left:5px;
+}
+
+.page-user-edit .field-group-div label.option {
+  width:auto;
+  float:none;
+}
+
+.page-user-edit .field-group-div .form-checkboxes,
+.page-user-edit .field-group-div .form-radios {
+  margin-left: 140px;
+}
+
+.page-user-edit .field-group-div .description {
+  color: #DDD;
+  margin-left: 140px;
+  margin-right: 10px;
+}
+
+.page-user-edit .field-group-div {
+  float:left;
+  margin:5px;
+  width:470px;
+}
+.page-user-edit .field-group-div.group-photo {
+  float:right;
+}
+.page-user-edit #edit-actions {
+  clear:left;
+}
+
+.page-user .pane-user-information-panel-pane-3 .field-content{
+  padding-bottom:20px;
+  font-size:2em;
+  text-align: center;
+}
+
+.page-user .panel-pane .pane-title,
+.page-user-edit .field-group-div h3 {
+  color:white;
+  background:#CE000C;
+  font-size:1em;
+  padding: 3px 5px;
+}
+.page-user .panel-pane .pane-content {
+  padding: 5px;
+}
+
+.page-user .panel-pane tr {
+  background:#4399E9;
+  border:none;
+}
+
+.page-user .panel-pane tr.even {
+  background:#57A3E9;
+}
+
+.page-user .pane-user-information-panel-pane-1 {
+  background:#CCC;
+  border:1px solid #999;
+  color:#000;
+}
+
+.page-user .pane-user-information-panel-pane-1 .pane-title {
+  background:#666;
+}
+
+.page-user .views-field-field-photo {
+  text-align:center;
+}
+
+.page-user .pane-1 form {
+  text-align:center;
+}
+
+.page-user .pane-user-information-panel-pane-1 .views-label {
+  font-weight:bold;
+  width: 150px;
+  display: block;
+  float: left;
+  clear:left;
+}
+.page-user .pane-user-information-panel-pane-1 .views-field {
+  clear:left;
+}
+.page-user .pane-user-information-panel-pane-1 .views-field div.field-content,
+.page-user .pane-user-information-panel-pane-1 .views-field-field-user-suburb,
+.page-user .pane-user-information-panel-pane-1 .views-field-field-prefix-name {
+  margin-left:150px;
+}
+
+
+.page-user .pane-1,
+.page-user .pane-1 tr {
+  background:#F2F2F2;
+  color:#000;
+}
+.page-user .pane-1 { border: 1px solid #999; }
+
+.page-user .pane-1 .pane-title {
+  background:#666;
+}
+
+.page-user .panel-col-bottom {
+  padding-top:10px;
+}
+
+.page-user .pane-1 table,
+.page-user .pane-1 tr,
+.page-user .pane-1 td {
+  border:1px solid #BEBFB9;
+}
+
+.page-user .pane-1 .date-column { width: 140px; }
+.page-user .pane-1 .location-column { width: 275px; }
+.page-user .pane-1 .address-column { width: 340px; }
+.page-user .pane-1 .time-column { width: 110px; }
+
+.dataTables_length select {
+  border:1px solid;
+  margin:2px;
+}
+.dataTables_filter input {
+  border:2px inset;
+  padding:3px;
+  margin:2px;
+}
+*/
+
+
+
+
+
+
+/* Temp styling for pastoral checks form */
+
+/*.referrals {
+  overflow: scroll;
+  height:400px;
+}*/
+
+.referrals h3 {
+  border-top:1px solid grey;
+  clear:right;
+}
+
+.referrals h3.title-checked {
+  text-decoration: line-through;
+}
+
+.referrals .referral-details {
+  background: #CCC;
+  border: 1px solid grey;
+  padding: 5px;
+  width:40%
+}
+
+.referrals form {
+  width: 55%;
+  background: #CCC;
+  border: 1px solid grey;
+  padding: 5px;
+  float: right;
+}
+
+/* #### DASHBOARD Stuff #### */
+
+.dash-block-header {
+  color:#e2001a;
+  font-size:1em;
+  border:none;
+}
+
+#right-column {
+  float:right;
+  width: 220px;
+}
+#left-column {
+  float:left;
+  width: 340px;
+}
+#center-column {
+  margin: 20px 240px 0 360px;
+}
+
+#left-column .form-select,
+#left-column .form-text {
+  width:340px;
+}
+
+#right-column .form-text,
+#right-column .form-select {
+  width: 220px;
+}
+
+.dash-count-block {
+  display: block;
+  width: 100px;
+  height: 100px;
+  float: left;
+  color: white;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.dash-count-block .count {
+  display: block;
+  font-size: 2.5em;
+  margin: 30px 5px 20px;
+}
+
+.dash-count-block.total {
+  background: #e6001d;
+}
+.dash-count-block.check {
+  background: #ffae00;
+  margin: 0 20px;
+}
+.dash-count-block.approve {
+  background: #0fc818;
+}
+
+.location-information .dash-block-content {
+  border: 1px solid #DDD;
+  padding: 10px;
+}
+.quick-lookup .dash-block-header {
+  margin:0;
+}
+
+.dash-block .dash-button {
+  background:#2F89D5;
+  width:170px;
+  display:block;
+  float:left;
+  color:#FFF;
+  text-align:center;
+  text-transform: uppercase;
+  padding: 4px 0;
+  border-radius: 2px;
+  margin:10px 10px 10px 0;
+  font-weight: normal;
+}
+
+#right-column .dash-block {
+  clear: both;
+}
+
+/*** User Manage Page ***/
+.user-manage-block {
+  border: 1px solid #bebfb9;
+  padding: 10px;
+  float:left;
+  width:270px;
+  margin:20px 20px 0 0;
+  overflow: auto;
+  height: 330px;
+}
+.user-manage-block h3 {
+  color:#e2001a;
+  font-size:1em;
+  border:none;
+}
+.user-manage-block .form-item {
+  padding:0;
+  margin:0;
+}
+.user-manage-year {
+  clear:left;
+}
+.user-manage-year .year-title {
+  text-align: center;
+  border-bottom: 1px solid black;
+  padding-top:50px;
+}
+
+.user-manage-block .button,
+.user-manage-block .button:link,
+.user-manage-block .button:visited,
+.user-manage-block .button:hover,
+.user-manage-block .button:active {
+  border-radius: 3px;
+  background: #e2001a;
+  border-color: #bc2b1b;
+  color: #fff;
+  float:right;
+  margin:10px 0 0;
+  width: 160px;
+}
+
+
+/*
+#dashboard .count_block {
+  display: block;
+  width: 100px;
+  background: red;
+  height: 100px;
+  color: white;
+  margin: 20px;
+  padding: 10px;
+  text-align: center;
+  float:left;
+}
+#dashboard .count_block .count_number {
+  font-size: 3em;
+  display: block;
+  margin: 20px 0;
+}
+#dashboard .count_block .count_description {
+  display: block;
+}
+#dashboard hr {
+  clear:left;
+}
+#dashboard .dashboard_location {
+  background: #333;
+  color: white;
+}
+#dashboard .dashboard_location h2 {
+  padding: 10px;
+}
+
+#dashboard .dashboard_location a {
+  color:#FFF;
+}
+
+#dashboard .inactive {
+  color:#CCC;
+  background: #999;
+}
+
+#dashboard .control_links {
+  float:right;
+}
+*/
+
+.payment_option {
+  background: #F0F0F0;
+  border: #333 1px solid;
+  padding:10px;
+  width:450px;
+}
+
+
+
+
+/** Fix the Throbber because of padded input fields **/
+
+html.js input.form-autocomplete {
+  background-image: url(images/throbber.gif);
+  background-position: 100% 10px;
+}
+
+html.js input.throbbing {
+  background-position: 100% -120px;
+}
+
+
+/** Hide double images in Editable Views **/
+.views-field-field-photo-editable .views-row-edit-static {
+  display: none;
+}

@@ -1,0 +1,6 @@
+name = Pond Registrations
+description = The main application form, user edit form, etc
+package = "Pond Modules"
+dependencies[] = pond
+core = 7.x
+configure = admin/config/pond/pond

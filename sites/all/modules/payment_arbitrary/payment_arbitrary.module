@@ -1,0 +1,142 @@
+<?php
+
+
+/**
+ * Implements hook_menu().
+ */
+function payment_arbitrary_menu() {
+  $item['payment/new'] = array(
+    'title' => 'New Payment',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('payment_arbitrary_form'),
+    'access arguments' => array('create payments'),
+    'type' => MENU_CALLBACK,
+  );
+  return $item;
+}
+
+
+/**
+ * Implements hook_permission
+ */
+function payment_arbitrary_permission() {
+  return array(
+    'create payments' => array(
+      'title' => t('Create New Payments'),
+    ),
+    'assign payments' => array(
+      'title' => t('Assign Payments to Users'),
+    ),
+  );
+}
+
+/**
+ * Return a standalone payment page.
+ *
+ * @return array
+ *   A Drupal build array.
+ */
+function payment_arbitrary_form($form, &$form_state, $uid = FALSE){
+  if ($uid && !is_array($uid)) {
+    $user = user_load($uid);
+  }
+  if (!isset($user->uid)) {
+    global $user;
+  }
+
+  // Get available payment methods.
+  //Todo: Access Checking for payment methods
+  $payment_methods = entity_load('payment_method', FALSE);
+  foreach ($payment_methods as $payment_method) {
+    $pmid_options[(string) $payment_method->pmid] = check_plain($payment_method->title_generic);
+  }
+
+  $form['payment_method'] = array(
+    '#type' => 'select',
+    '#title' => t('Payment method'),
+    '#required' => TRUE,
+    '#options' => $pmid_options,
+  );
+  $form['payment_amount'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Payment Amount'),
+    '#field_prefix' => '$',
+    '#required' => TRUE,
+  );
+  $form['payment_description'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Payment Description'),
+  );
+  $form['payment_user'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Assign the Payment to a User'),
+    '#access' => user_access('assign payments'),
+    '#autocomplete_path' => 'user/autocomplete',
+    '#default_value' => isset($user->name)?$user->name:'',
+  );
+  /*
+  $form['payment_date'] = array(
+    '#type' => 'date',
+    '#title' => t('Date of Payment'),
+    '#required' => TRUE,
+    '#access' => user_access('assign payments'),
+  );*/
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Pay'),
+  );
+
+  $form['#submit'] = array('payment_arbitrary_form_submit');
+  return $form;
+}
+
+/**
+ * Implements form submit callback for payment_form().
+ */
+function payment_arbitrary_form_submit(array $form, array &$form_state) {
+  $descr = ($form_state['values']['payment_description'])?$form_state['values']['payment_description']:t('Payment');
+  $currency_code = isset($form_state['currency_code'])?$form_state['currency_code']:'AUD';//ToDo: Implement Proper Currency Support
+  if($form_state['values']['payment_user']){
+    $usernames = (array) $form_state['values']['payment_user'];
+    foreach($usernames as $username){
+      $account = user_load_by_name($username);
+      if($account->uid){
+        $payment = payment_arbitrary_save($form_state['values']['payment_amount'], $descr, $form_state['values']['payment_method'], $currency_code, $account->uid);
+      }
+      if (payment_status_is_or_has_ancestor($payment->getStatus()->status, PAYMENT_STATUS_FAILED)) {//If payment failed
+        $form_state['rebuild'] = TRUE;
+      }
+    }
+  } else {
+    $payment = payment_arbitrary_save($form_state['values']['payment_amount'], $descr, $form_state['values']['payment_method'], $currency_code);
+  }
+}
+
+function payment_arbitrary_save($amount, $description, $method, $currency_code, $uid = FALSE){
+$payment = new Payment(array(
+    'context' => 'payment_arbitrary',
+    'currency_code' => $currency_code, 
+    'description' => $description,
+    'finish_callback' => 'payment_arbitrary_payment_finish',
+  ));
+  $line_item = new PaymentLineItem(array(
+    'amount' => $amount,
+    'description' => $description,
+  ));
+  $payment->setLineItem($line_item);
+  $payment->method = entity_load_single('payment_method', $method);
+  if($uid){
+    $payment->uid = $uid;
+  }
+  //Todo: Offer a date override. If I collected cash from someone yesterday (or last year), and I'm recording it now.
+  entity_save('payment', $payment);
+  $payment->execute(); 
+  return $payment;
+}
+
+/**
+ * Implements Payment::finish_callback.
+ */
+function payment_arbitrary_payment_finish(Payment $payment) {
+  
+ }

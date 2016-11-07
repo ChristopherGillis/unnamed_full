@@ -1,0 +1,2277 @@
+<?php
+
+/**
+ * Implementation of hook_menu
+ */
+function pond_regos_menu(){
+  $items = array();
+  $items['home'] = array(
+    'title' => 'Join the Red Frog Crew',
+    'page callback' => 'pond_regos_home_page',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['apply'] = array(
+    'title' => 'Apply Now',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_regos_application_form'),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['apply/existing'] = array(
+    'title' => 'Enter your password',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_regos_existing_user_form'),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['registration/edit'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_regos_registration_edit_form'),
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK
+  );
+  $items['international/edit'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_regos_international_edit_form'),
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK
+  );
+  $items['pond/autocomplete/church'] = array(
+    'page callback' => 'pond_regos_autocomplete_church',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+function pond_regos_permission() {
+  return array(
+    'see all registrations' => array(
+      'title' => t('See all the users'),
+    ),
+    'edit users' => array(
+      'title' => t('Edit all the users'),
+    )
+  );
+}
+
+
+/**
+ * The home page.
+ */
+function pond_regos_home_page(){
+  global $user;
+  if(!empty($user->uid)){//If the user is logged in, take them to their page
+    drupal_goto('user');
+  }
+  // Include the CTools tools that we need.
+  ctools_include('ajax');
+  ctools_include('modal');
+
+  // Add CTools' javascript to the page.
+  ctools_modal_add_js();
+
+  $nation = pond_nations_get();
+  $nation = entity_load_single('nation', $nation);
+  $graphic_uri = pond_regos_get_field_value('nation', $nation, 'field_home_page_graphic', 0, 'uri');
+  $graphic_output = theme_image(array('path' => $graphic_uri, 'attributes' => array()));
+
+  drupal_set_title('');
+  $output = '<div id="home-graphic">'.$graphic_output.'</div>';
+
+  $output .= '<div id="home-blocks">';
+  $switch_form = drupal_get_form('pond_regos_email_switch_form');
+  $output .= '<div class="home-block"><h2>'.variable_get('pond_default_year').' Applications Open</h2>'.drupal_render($switch_form).'</div>';
+  //$output .= '<div class="home-block"><h2>Login</h2>'.pond_render_block('user', 'login').'</div>';
+  $login_form = drupal_get_form('user_login_block');
+  $output .= '<div class="home-block"><h2>Login</h2>'.drupal_render($login_form).'</div>';
+  $output .= '</div>';
+
+  return $output;
+}
+
+function pond_regos_email_switch_form(){
+  $form = array();
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Email Address',
+    '#required' => TRUE
+    );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Apply Now',
+    //'#attributes' => array('class' => array('ctools-use-modal')),
+    //'#id' => 'apply-button',
+    );
+  return $form;
+}
+
+function pond_regos_email_switch_form_submit($form, &$form_state){
+  $account = user_load_by_name($form_state['values']['email']);
+  if($account){
+    drupal_goto('apply/existing', array('query' => array('email' => $form_state['values']['email'])));
+  }
+  else {
+    drupal_goto('apply', array('query' => array('email' => $form_state['values']['email'])));
+  }
+}
+
+function pond_regos_existing_user_form(){
+  ctools_include('modal');
+  ctools_include('ajax');
+  $form = array();
+  if(!isset($_REQUEST['email'])){
+    return $form;
+  }
+  $form['markup'] = array(
+    '#markup' => 'Welcome back! Enter your password to login.'
+    );
+  $form['email'] = array(
+    '#type' => 'value',
+    '#value' => $_REQUEST['email'],
+    );
+  $form['email_display'] = array(
+    '#type' => 'item',
+    '#title' => 'Email:',
+    '#markup' => $_REQUEST['email'],
+    );
+  $form['password'] = array(
+    '#type' => 'password',
+    '#title' => 'Enter Password',
+    '#required' => TRUE
+    );
+  $form['links'] = array(
+    '#markup' => l('Lost Password?', 'user/password', array('attributes' => array('class' => array('links')))),
+    );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Apply Now'
+    );
+  return $form;
+}
+
+function pond_regos_existing_user_form_validate($form, &$form_state){
+  $uid = user_authenticate($form_state['values']['email'], $form_state['values']['password']);
+  if(empty($uid)){
+    form_set_error('password', t('Incorrect Password'));
+  }
+}
+
+function pond_regos_existing_user_form_submit($form, &$form_state){
+  $uid = user_authenticate($form_state['values']['email'], $form_state['values']['password']);
+  $new_form_state = array();
+  $new_form_state['uid'] = $uid;
+  user_login_submit(array(), $new_form_state);//Login the user.
+  drupal_goto('apply');
+}
+
+
+function pond_regos_form_alter(&$form, &$form_state, $form_id){
+  switch($form_id){
+    case 'user_login':
+    case 'user_login_block':
+      $form['links']['#markup'] = l('Lost Password?', 'user/password', array('attributes' => array('class' => array('links'))));
+      //Intentionally omitted break statement.
+    case 'user_pass':
+      $form['name']['#title'] = t('Email Address');
+      break;
+    case 'user_register_form':
+      drupal_goto('apply');
+      break;
+    case 'user_profile_form':
+      //unset($form['field_photo']);
+      //debug($form);
+      //$form['#prefix'] = '<div id="user-profile">';
+      //$form['#suffix'] = '</div>';
+      array_unshift($form['#validate'], 'pond_regos_user_profile_form_validate');
+      //array_unshift($form['#submit'], 'pond_regos_user_profile_form_submit');
+      //pond_regos_user_profile_form($form, $form_state);
+      //debug($form);
+      break;
+  }
+}
+
+function pond_regos_user_profile_form_validate($form, &$form_state){
+  $form_state['values']['name'] = $form_state['values']['mail'];
+}
+
+/**
+ * This is a simple form designed for users to edit their own regos. Not for managers.
+ */
+function pond_regos_registration_edit_form($form, &$form_state, $rego_id){
+  global $user;
+  $registration = entity_load_single('registrations', $rego_id);
+  ## access check
+  if($registration->uid != $user->uid && !user_access('edit users')) {
+    drupal_access_denied();
+    exit();
+  }
+  $allowed_fields = array(
+    'field_bluecard_info',
+    'field_bluecard',
+    'field_bluecard_number',
+    'field_bluecard_expiry',
+    'field_emergency_name',
+    'field_emergency_relationship',
+    'field_emergency_phone',
+    'field_emergency_alternative',
+  );
+  field_attach_form('registrations', $registration, $form, $form_state);
+  foreach($form as $key => $value){
+    if(!in_array($key, $allowed_fields) && substr($key, 0, 6) == 'field_'){
+      $form[$key]['#access'] = user_access('edit users');
+    }
+  }
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+    '#weight' => 999,
+  );
+  return $form;
+}
+function pond_regos_registration_edit_form_submit($form, &$form_state){
+  $entity = $form_state['complete form']['#entity'];
+  field_attach_form_validate($entity->entityType(), $entity, $form, $form_state);
+  field_attach_submit($entity->entityType(), $entity, $form, $form_state);
+  $entity->save();
+  cache_clear_all('pond:user_info:' . $entity->uid . ':' . $entity->year, 'cache_pond', TRUE);
+}
+
+/**
+ * This is a simple form designed for users to edit their own international apps. Not for managers.
+ */
+function pond_regos_international_edit_form($form, &$form_state, $year=FALSE, $int_id = FALSE){
+  global $user;
+  if(!empty($int_id)){
+    ## We are editing a record
+    $entity = entity_load_single('international_application', $int_id);
+    ## access check
+    if($entity->uid != $user->uid && !user_access('edit users')) {
+      drupal_access_denied();
+      exit();
+    }
+  } else {
+    ## We are creating a record
+    $entity = entity_create('international_application', array('type' => 'international_application'));
+  }
+
+  $year = ($year)?$year:$entity->year;
+  if(empty($year)){
+    drupal_access_denied();
+    exit();
+  }
+
+  field_attach_form('international_application', $entity, $form, $form_state);
+  $form['year'] = array(
+    '#type' => 'value',
+    '#value' => $year,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+    '#weight' => 999,
+  );
+  return $form;
+}
+
+function pond_regos_international_edit_form_validate($form, &$form_state){
+  global $user;
+  $entity = $form_state['complete form']['#entity'];
+  if(!isset($entity->id)){
+    $uid = isset($entity->uid)?$entity->uid:$user->uid;
+    $year = $form_state['values']['year'];
+    $info = pond_get_by_uid($uid, $year);
+    if(!empty($info['international_application'])){
+      form_error($form, t('Sorry, travel details have already been entered for this applicant. Use the edit feature instead.'));
+    }
+  }
+}
+
+function pond_regos_international_edit_form_submit($form, &$form_state){
+  global $user;
+  $entity = $form_state['complete form']['#entity'];
+  field_attach_form_validate($entity->entityType(), $entity, $form, $form_state);
+  field_attach_submit($entity->entityType(), $entity, $form, $form_state);
+  if(!isset($entity->uid)){
+    $entity->uid = $user->uid;
+  }
+
+  if(!isset($entity->year)){
+    $entity->year = $form_state['values']['year'];
+  }
+
+  $entity->save();
+  cache_clear_all('pond:user_info:' . $user->uid . ':' . $entity->year, 'cache_pond', TRUE);
+}
+
+/**
+ * Implementation of hook_rules_event_info().
+ * @ingroup rules
+ */
+function pond_regos_rules_event_info() {
+  return array(
+    'pond_regos_new_registration' => array(
+      'label' => t('Someone has applied for Schoolies.'),
+      'group' => t('Pond'),
+      'variables' => array(
+        'registrations' => array(
+          'type' => 'registrations',
+          'label' => t('The New Registration'),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_extra_fields().
+ */
+function pond_regos_field_extra_fields() {
+  $return['registrations']['registrations']['form'] = array(
+    'church_container' => array(
+      'label' => t('Church Select/Add'),
+      'description' => t('Registration form church elements.'),
+      'weight' => -10,
+    ),
+    'referee_container' => array(
+      'label' => t('Referee Select/Add'),
+      'description' => t('Registration form referee elements.'),
+      'weight' => -10,
+    ),
+    'international' => array(
+      'label' => t('International Application Fields'),
+      'description' => t('Passport Details, etc.'),
+      'weight' => -10,
+    ),
+    'user' => array(
+      'label' => t('User Details'),
+      'description' => t('Registration form user elements.'),
+      'weight' => -10,
+    ),
+    'user_password' => array(
+      'label' => t('User Password'),
+      'description' => t('Password Field.'),
+      'weight' => -10,
+    ),
+    'location_container' => array(
+      'label' => t('Location Details'),
+      'description' => t('Registration form location elements.'),
+      'weight' => -10,
+    ),
+    'prices' => array(
+      'label' => t('Prices'),
+      'description' => t('Registration form prices calculator.'),
+      'weight' => -10,
+    ),
+  );
+  $return['registrations']['registrations']['display'] = array(
+    'location' => array(
+      'label' => t('Location'),
+      'description' => t('Location applied for.'),
+      'weight' => -10,
+    ),
+    'role' => array(
+      'label' => t('Role'),
+      'description' => t('Role applied for.'),
+      'weight' => -10,
+    ),
+    'dates' => array(
+      'label' => t('Dates'),
+      'description' => t('Dates applied for.'),
+      'weight' => -10,
+    ),
+    'church' => array(
+      'label' => t('Church'),
+      'description' => t('Church currently attending.'),
+      'weight' => -10,
+    ),
+    'referee' => array(
+      'label' => t('Referee'),
+      'description' => t('Referee Listed.'),
+      'weight' => -10,
+    ),
+  );
+  $return['user']['user']['form'] = array(
+    'emails_container' => array(
+      'label' => t('Email Address'),
+      'description' => t('Pond Registration form email elements.'),
+      'weight' => -10,
+    ),
+    'user_password' => array(
+      'label' => t('Password'),
+      'description' => t('Pond Registration set password confirmation elements.'),
+      'weight' => -10,
+    ),
+    'address_lookup_field' => array(
+      'label' => t('Address Lookup'),
+      'description' => t('Google API Lookup'),
+      'weight' => 0,
+    ),
+    'regoedit_container' => array(
+      'label' => t('Registration Edit Fields'),
+      'description' => t('Pond Registration form edit elements.'),
+      'weight' => -10,
+    ),
+  );
+  $return['user']['user']['display'] = array(
+    'name' => array(
+      'label' => t('Full Name'),
+      'description' => t('Combination of the name elements.'),
+      'weight' => 0,
+    ),
+    'address' => array(
+      'label' => t('Full Address'),
+      'description' => t('Combination of the address elements.'),
+      'weight' => 0,
+    ),
+    'training' => array(
+      'label' => t('Training Locations'),
+      'description' => t('Link to information about training locations'),
+      'weight' => 0,
+    ),
+    'applications' => array(
+      'label' => t('Applications'),
+      'description' => t('Details of all existing applications'),
+      'weight' => 0,
+    ),
+    'current_status' => array(
+      'label' => t('Current Year\'s Application Status'),
+      'description' => t('Status is a field on the "Worker" entity.'),
+      'weight' => 0,
+    ),
+    'payment_details' => array(
+      'label' => t('Payment Details'),
+      'description' => t('Payments made and amount owing. (Current Year)'),
+      'weight' => 0,
+    ),
+    'payment_form' => array(
+      'label' => t('Payment Form'),
+      'description' => t('Make a new payment. (Current Year)'),
+      'weight' => 0,
+    ),
+    'personal_header' => array(
+      'label' => t('Header - Personal Details'),
+      'description' => t('A seperate header, just for personal details.'),
+      'weight' => 0,
+    ),
+    'upload_link' => array(
+      'label' => t('Photo Upload Button'),
+      'description' => t('Links to the user edit page.'),
+      'weight' => 0,
+    ),
+    'edit_link' => array(
+      'label' => t('Edit Button'),
+      'description' => t('Links to the user edit page.'),
+      'weight' => 0,
+    ),
+  );
+  $return['church']['church']['form'] = array(
+    'address_lookup_field' => array(
+      'label' => t('Address Lookup'),
+      'description' => t('Google API Lookup'),
+      'weight' => 0,
+    ),
+  );
+
+  return $return;
+}
+
+/**
+ * Implements hook_entity_view().
+ */
+function pond_regos_entity_view($entity, $type, $view_mode, $langcode) {
+  switch($type){
+    case 'registrations':
+      switch($view_mode){
+        case 'secondary':
+          $fields_to_keep = array('field_bluecard', 'field_accommodation', 'field_dietary', 'field_experience', 'field_is_chaplain');
+          $entity->content = array_intersect_key($entity->content, array_flip($fields_to_keep));
+        break;
+        default:
+          $info = pond_get_by_uid($entity->uid, $entity->year);
+          $entity->content = array();
+
+          if(!empty($info['status'])){
+            $entity->content['status'] = array(
+              '#type' => 'item',
+              '#title' => t('Status'),
+              '#markup' => $info['status'],
+            );
+          }
+
+          if(!empty($info['location'])){
+            $location = entity_load_single('location', $info['location']);
+            $entity->content['location'] = array(
+              '#type' => 'item',
+              '#title' => t('Location'),
+              '#markup' => $location->title,
+            );
+          }
+
+          if(!empty($info['church'])){
+            $church = entity_load_single('church', $info['church']);
+            $entity->content['church'] = array(
+              '#type' => 'item',
+              '#title' => t('Church'),
+              '#markup' => $church->title,
+            );
+          }
+
+          if(!empty($info['volunteer_role'])){
+            $role = entity_load_single('volunteer_role', $info['volunteer_role']);
+            $entity->content['role'] = array(
+              '#type' => 'item',
+              '#title' => t('Role'),
+              '#markup' => $role->title,
+            );
+          }
+
+          if(!empty($info['referee'])){
+            $referee = entity_load_single('referee', $info['referee']);
+            $entity->content['referee'] = array(
+              '#type' => 'item',
+              '#title' => t('Referee'),
+              '#markup' => $referee->title,
+            );
+          }
+
+          if(!empty($info['dates'])){
+            $dates = entity_load('night', $info['dates']);
+            foreach($dates as $date){
+              $nights[] = pond_get_block_title($date);
+            }
+            //$nights = theme('item_list', array('items' => $nights, 'title' => '', 'type' => 'ul', 'attributes' => array()));
+            $entity->content['dates'] = array(
+              '#type' => 'item',
+              '#title' => t('Dates'),
+            );
+            $entity->content['dates'][] = array(
+              '#theme' => 'item_list',
+              '#items' => $nights
+            );
+          }
+      }
+    break;
+  }
+}
+
+/**
+ * Implements hook_user_view().
+ */
+function pond_regos_user_view($account, $view_mode, $langcode) {
+  //So our fields are not restricted by view mode?
+  $full_account = user_load($account->uid);
+
+  //Return a single field with a full name
+  $prefix = field_get_items('user', $full_account, 'field_prefix_name');
+  $first = field_get_items('user', $full_account, 'field_first_name');
+  $last = field_get_items('user', $full_account, 'field_last_name');
+  $name = $prefix[0]['value'].' '.$first[0]['value'].' '.$last[0]['value'];
+  $account->content['name'] = array(
+    '#type' => 'item',
+    '#title' => t('Name'),
+    '#markup' => $name,
+    '#weight' => 0,
+  );
+
+  //If the page title is the username (email address), replace it with their fullname
+  if(drupal_get_title() == $account->name){
+    drupal_set_title($name);
+  }
+
+  //Return a single field with a full address
+  $number = field_get_items('user', $full_account, 'field_address_street_number');
+  $name = field_get_items('user', $full_account, 'field_address_street_name');
+  $suburb = field_get_items('user', $full_account, 'field_address_suburb');
+  $state = field_get_items('user', $full_account, 'field_address_state');
+  $postcode = field_get_items('user', $full_account, 'field_address_postcode');
+  $country = field_get_items('user', $full_account, 'field_address_country');
+  $address = $number[0]['value'].' '.$name[0]['value'].', '.$suburb[0]['value'].' <br />'."\n"
+    .$state[0]['value'].' '.$postcode[0]['value'].', '.$country[0]['value'];
+
+  $account->content['address'] = array(
+    '#type' => 'item',
+    '#title' => t('Address'),
+    '#markup' => $address,
+    '#weight' => 0,
+  );
+
+  $account->content['personal_header'] = array(
+    '#prefix' => '<h3 class="personal-header">',
+    '#markup' => t('Personal Details'),
+    '#suffix' => '</h3>',
+    '#weight' => -9999,
+  );
+  $account->content['edit_link'] = array(
+    '#markup' => l(t('Edit Personal Details'), 'user/'.$account->uid.'/edit', array('query' => array('destination' => 'user'), 'attributes' => array('class' => array('button', 'profile-block-edit')))),
+  );
+  $account->content['upload_link'] = array(
+    '#markup' => l(t('Upload'), 'user/'.$account->uid.'/edit', array('query' => array('destination' => 'user'), 'attributes' => array('class' => array('button', 'profile-upload')))),
+  );
+
+  if($view_mode != 'basic'){
+    $default_nation = pond_nations_get();
+    $training_link = pond_nations_get_location_training_link($default_nation);
+    $training_link = !empty($training_link) ? $training_link : variable_get('pond_training_info_link');
+    if(!empty($training_link)){
+      $account->content['training'] = array();
+      $account->content['training']['header'] = array(
+        '#prefix' => '<h3 class="profile-block-header">',
+        '#markup' => t('Training Locations'),
+        '#suffix' => '</h3>',
+      );
+      $account->content['training']['content'] = array(
+        '#prefix' => '<div class="profile-block-content">',
+        '#markup' => l(t('Choose a Training Location'), $training_link),
+        '#suffix' => '</div>',
+      );
+    }
+
+    $account->content['applications'] = array();
+    $open_years = pond_get_years(1);
+    rsort($open_years); //Later years first
+    foreach($open_years as $open_year){
+      $open_year_info = pond_get_by_uid($account->uid, $open_year);
+      $account->content['applications']['application_'.$open_year] = array(
+        '#type' => 'item',
+        '#prefix' => '<div class="profile-block">',
+        '#suffix' => '</div>',
+      );
+      $account->content['applications']['application_'.$open_year]['header'] = array(
+        '#prefix' => '<h3 class="profile-block-header">',
+        '#markup' => t('!y Application', array('!y' => $open_year)),
+        '#suffix' => '</h3>',
+      );
+      $account->content['applications']['application_'.$open_year]['content'] = array(
+        '#prefix' => '<div class="profile-block-content">',
+        '#suffix' => '</div>',
+      );
+      if(empty($open_year_info['registrations'])){
+        //They haven't applied yet
+        $account->content['applications']['application_'.$open_year]['content']['apply_link'] = array(
+          '#markup' => l(t('Apply Now for !y', array('!y' => $open_year)), 'pond/set_year/'.$open_year, array('query' => array('destination' => 'apply'))),
+        );
+      } else {
+        //They have applied
+        $registration = entity_load('registrations', array($open_year_info['registrations']));
+        $account->content['applications']['application_'.$open_year]['content']['edit_link'] = array(
+          '#markup' => l(
+            t('Edit !y Application', array('!y' => $open_year)),
+            'registration/edit/'.$open_year_info['registrations'],
+            array(
+              'query' => array('destination' => 'user'),
+              'attributes' => array('class' => array('button', 'profile-block-edit')),
+              )
+          ),
+        );
+
+        $international = pond_regos_get_field_value('location', $open_year_info['location'], 'field_is_international');
+        if($international == 1){
+          if(!empty($open_year_info['international_application'])){
+
+            $account->content['applications']['application_'.$open_year]['content']['int_edit_link'] = array(
+              '#markup' => l(
+                t('Update !y Travel Details', array('!y' => $open_year)),
+                'international/edit/'.$open_year.'/'.$open_year_info['international_application'],
+                array(
+                  'query' => array('destination' => 'user'),
+                  'attributes' => array('class' => array('button', 'profile-block-edit')),
+                  )
+              ),
+            );
+
+          } else {
+
+            $account->content['applications']['application_'.$open_year]['content']['int_create_link'] = array(
+              '#markup' => l(
+                t('Enter !y Travel Details', array('!y' => $open_year)),
+                'international/edit/'.$open_year,
+                array(
+                  'query' => array('destination' => 'user'),
+                  'attributes' => array('class' => array('button', 'profile-block-edit')),
+                  )
+              ),
+            );
+
+          }
+        }
+
+        $account->content['applications']['application_'.$open_year]['content']['details'] = entity_view('registrations', $registration, 'teaser', NULL, TRUE);
+      }
+    }
+
+    $year = pond_get_year(1);
+    $info = pond_get_by_uid($account->uid);
+
+    if(!empty($info['worker'])){
+      $status = pond_regos_get_field_value('worker', $info['worker'], 'field_worker_status');
+      $account->content['current_status'] = array(
+        '#prefix' => '<div class="profile-block application-status"><h3 class="profile-block-header">'.$year.' '.t('Application Status').'</h3><div class="profile-block-content">',
+        '#markup' => $status,
+        '#suffix' => '</div></div>',
+      );
+    }
+
+    $account->content['payment_details'] = array(
+      '#prefix' => '<div class="profile-block payment-details"><h3 class="profile-block-header">'.$year.' '.t('Payment Details').'</h3><div class="profile-block-content">',
+      '#markup' => theme('pond_payments_user_financials', array('finances' => $info['finances'])),
+      '#suffix' => '</div></div>',
+    );
+    if(isset($info['finances']['method']) && $info['finances']['method'] == 'bt'){
+      //Bank Transfer
+      $bt = pond_regos_get_field_value('nation', $info['nation'], 'field_bank_transfer');
+      $account->content['payment_form'] = array(
+        '#prefix' => '<div class="profile-block"><h3 class="profile-block-header">'.t('Make a Payment').'</h3><div class="profile-block-content">',
+        '#suffix' => '</div></div>');
+      $account->content['payment_form'][]['#markup'] = '<p><strong>Direct Transfer to:</strong></p>';
+      $account->content['payment_form'][]['#markup'] = '<p>'.check_markup($bt, 'html').'</p>';
+      $account->content['payment_form'][]['#markup'] = '<p><strong>Reference Number:</strong></p>';
+      $account->content['payment_form'][]['#markup'] = '<p>RF'.$account->uid.'</p>';
+
+    } else if(module_exists('payment_arbitrary')) {
+      $account->content['payment_form'] = array(
+      '#prefix' => '<div class="profile-block"><h3 class="profile-block-header">'.t('Make a Payment').'</h3><div class="profile-block-content">',
+      '#suffix' => '</div></div>',
+      );
+      $account->content['payment_form'][] = drupal_get_form('payment_arbitrary_form', $account->uid, array('build_type' => 'personal'));
+    }
+  }
+}
+
+//This function is called from CCK - entered into the "Allowed Values" in the Field UI.
+function pond_regos_get_experience_values(){
+  $year = pond_get_year();
+  $options = array();
+  for($i=1997; $i<$year; $i++){
+    $options[$i] = substr($i, 2, 2);
+  }
+  return $options;
+}
+
+/**
+ * Implements hook_field_attach_form().
+ */
+function pond_regos_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
+
+  switch($entity_type){
+    case 'registrations':
+      if(module_exists('pond_nations')){
+        $nation = pond_nations_get();
+        $nation = entity_load_single('nation', $nation);
+        $bluecard = pond_regos_get_field_value('nation', $nation, 'field_requires_bluecard');
+        if(empty($bluecard)){
+          //$lang = $form['field_bluecard_info']['#language'];
+          //$form['field_bluecard_info'][$lang][0]['value']['#access'] = FALSE;
+          $form['field_bluecard_info']['#access'] = FALSE;
+          $form['field_bluecard']['#access'] = FALSE;
+          $form['field_bluecard_number']['#access'] = FALSE;
+          $form['field_bluecard_expiry']['#access'] = FALSE;
+        }
+
+        $chaplain = pond_regos_get_field_value('nation', $nation, 'field_has_school_chaplains');
+        if(empty($chaplain)){
+          $form['field_is_chaplain']['#access'] = FALSE;
+          $form['field_is_chaplain_at']['#access'] = FALSE;
+        }
+
+        $initial = pond_regos_get_field_value('nation', $nation, 'field_intro');
+        if(!empty($initial)){
+          $form['field_initial_info']['und'][0]['displayonly']['#markup'] = $initial;
+        } else {
+          $form['field_initial_info']['#access'] = FALSE;
+        }
+
+        $terms = pond_regos_get_field_value('nation', $nation, 'field_terms_and_conditions');
+        if(!empty($terms)){
+          $form['field_tc']['und'][0]['displayonly']['#markup'] = $terms;
+        } else {
+          $form['field_tc']['#access'] = FALSE;
+        }
+      }
+
+      break;
+    case 'user':
+      //Google Address Lookup. See pond_regos_field_extra_fields().
+      //For some reason this does not honour the field weight set by the user (which is the whole purpose of hook_field_extra_fields)
+      //So my hacky method is to put it directly after the Gender.
+      $weight = $form['field_user_gender']['#weight']+1;
+      $form['address_lookup_field'] = array(
+          '#title' => 'Home Address Lookup:',
+          '#type' => 'textfield',
+          '#weight' => $weight,
+          '#attached' => array('js' => array(
+            //'https://maps.google.com/maps/api/js?key=AIzaSyAJCVNSzHmA1X4HrRX4DzNxblgv_bWDFJY&sensor=true&libraries=places' => array('type' => 'external', 'group' => JS_LIBRARY),
+            drupal_get_path('module', 'pond_regos').'/js/address.js',
+          )),
+      );
+      if(module_exists('pond_nations')){
+        $nation = pond_nations_get();
+        $nation = entity_load_single('nation', $nation);
+        $label = pond_regos_get_field_value('nation', $nation, 'field_state_label');
+        if(!empty($label) && $label != 'State'){
+          $lang = $form['field_address_state']['#language'];
+          $form['field_address_state'][$lang][0]['value']['#title'] = $label;
+        }
+        $label = pond_regos_get_field_value('nation', $nation, 'field_replace_label_mobile');
+        if(!empty($label) && $label != 'Mobile Number'){
+          $lang = $form['field_user_phone_mobile']['#language'];
+          $form['field_user_phone_mobile'][$lang][0]['value']['#title'] = $label;
+        }
+      }
+
+      //Todo: There is a bug where the lookup fills the fields, but if there is an ajax rebuild after that point, the fields will be empty... same with password.
+      break;
+    case 'church':
+      //Google Address Lookup. See pond_regos_field_extra_fields().
+      //For some reason this does not honour the field weight set by the user (which is the whole purpose of hook_field_extra_fields)
+      //So my hacky method is to put it directly after the Phone Number.
+      $weight = $form['field_church_phone']['#weight']+1;
+      $form['address_lookup_field'] = array(
+          '#title' => 'Address Lookup:',
+          '#type' => 'textfield',
+          '#weight' => $weight,
+          '#attached' => array('js' => array(
+            //For some reason external js doesn't work here. It gets loaded but var google is undefined
+            //'https://maps.google.com/maps/api/js?key=AIzaSyAJCVNSzHmA1X4HrRX4DzNxblgv_bWDFJY&sensor=true&libraries=places' => array('type' => 'external', 'group' => JS_LIBRARY),
+            drupal_get_path('module', 'pond_regos').'/js/address.js',
+          )),
+      );
+      break;
+    case 'training_event':
+      //Google Address Lookup. See pond_regos_field_extra_fields().
+      //For some reason this does not honour the field weight set by the user (which is the whole purpose of hook_field_extra_fields)
+      $weight = 3;
+      $form['address_lookup_field'] = array(
+          '#title' => 'Address Lookup:',
+          '#type' => 'textfield',
+          '#weight' => $weight,
+          '#attached' => array('js' => array(
+            drupal_get_path('module', 'pond_regos').'/js/address.js',
+          )),
+      );
+      $form['title']['#access'] = FALSE;
+      break;
+  }
+}
+
+/**
+ * There are three cutoff levels.
+ * 1) The location is full. (This is kind of dangerous for multi-year setups)
+ * 2) The location/date combo is full.
+ * 3) The location/date/role combo is full.
+ */
+function pond_regos_check_cutoffs($location_id, $role_id=0, $date_id=0){
+  //Todo: Test cutoffs of all levels
+  $location = entity_load_single('location', $location_id);
+  $location_cutoff = pond_regos_get_field_value('location', $location, 'field_regos_cutoff');
+  dpm('Location Cutoff: '.$location_cutoff);
+  if(!empty($location_cutoff)){
+    $count = pond_count_regos(array('location' => array($location->id)));
+    dpm('Location Count: '.$count);
+    if($count >= $location_cutoff){
+      $location->field_active['und'][0]['value'] = '0';
+      $location->save();
+      cache_clear_all('pond:active_locations', 'cache_pond', TRUE);
+      return FALSE;
+    }
+  }
+  if(!empty($date_id)){
+    $date_relation = pond_relation_get_known('location', $location->id, 'night', $date_id, 'allows_bookings_for');
+    $date_cutoff = pond_regos_get_field_value('relation', $date_relation, 'field_regos_cutoff');
+    dpm('Date Cutoff: '.$date_cutoff);
+
+    if(!empty($date_cutoff)){
+      $count = pond_count_regos(array('location' => array($location->id), 'date' => $date_id));
+      dpm('Date Count: '.$count);
+      if($count >= $date_cutoff){
+        $date_relation->field_active['und'][0]['value'] = '0';
+        relation_save($date_relation);
+        cache_clear_all('pond:active_locations', 'cache_pond', TRUE);
+        return FALSE;
+      }
+    }
+  }
+  if(!empty($role_id) && !empty($date_id)){
+    $role_relation = pond_relation_get_known('relation', $date_relation->rid, 'volunteer_role', $role_id, 'has_allowed_role');
+    $role_cutoff = pond_regos_get_field_value('relation', $role_relation, 'field_regos_cutoff');
+    dpm('Role Cutoff: '.$role_cutoff);
+
+    if(!empty($role_cutoff)){
+      $count = pond_count_regos(array('location' => array($location->id), 'date' => $date_id, 'role' => $role_id));
+      dpm('Role Count: '.$count);
+      if($count >= $role_cutoff){
+        $role_relation->field_active['und'][0]['value'] = '0';
+        relation_save($role_relation);
+        cache_clear_all('pond:active_locations', 'cache_pond', TRUE);
+        return FALSE;
+      }
+    }
+  }
+  return TRUE;
+}
+
+function pond_regos_callback($form, $form_state) {
+  return $form;
+}
+
+function pond_regos_unique_nights($nights){
+  $nights = entity_load('night', $nights);
+  $individual_nights = $blocks = $return = array();
+  if(is_array($nights)){
+    foreach($nights as $night){
+      if(empty($night->field_block_nights)){
+        $individual_nights[] = $night->id;
+      } else {
+        foreach($night->field_block_nights['und'] as $linked){
+          $blocks[$night->id][] = $linked['target_id'];
+        }
+      }
+    }
+    //First check - get rid of unecessary individual nights
+    foreach($individual_nights as $key => $value){
+      foreach($blocks as $block){
+        if(in_array($value, $block)){
+          unset($individual_nights[$key]);
+          break;
+        }
+      }
+    }
+    //Second check - get rid of unecessary blocks by comparing to all other blocks
+    //TODO: Fix this to work with date fields instead of comparing Individual Nights.
+    foreach($blocks as $key_left => $block_left){
+      foreach($blocks as $key_right => $block_right){
+        if($key_right != $key_left){//Don't compare to itself otherwise we would delete it every time
+          $diff = array_diff($block_left, $block_right);
+          //If there is a difference it is safe. If no difference it is redundant - Delete it.
+          if(empty($diff)){
+            unset($blocks[$key_left]);
+            break;
+          }
+        }
+      }
+    }
+    //Combine the arrays and return
+    foreach($blocks as $key => $value){
+      $return[] = $key;
+    }
+    return $return+$individual_nights;
+  }
+}
+
+
+function pond_regos_get_team_leaders($filter = array()){
+  $year = isset($filter['year'])?$filter['year']:pond_get_year();
+  $items = array();
+
+  ##Primary Query
+  $query = db_select('eck_registrations', 'reg');
+  $query->condition('reg.year', $year);
+  $query->leftJoin('eck_worker', 'w', 'w.uid = reg.uid AND w.year = :year', array(':year' => $year));
+  $query->leftJoin('field_data_field_worker_status', 's', 's.entity_id = w.id');
+  $query->addField('w', 'id');
+  $query->addField('reg', 'title');
+
+  //Get "approved" people only
+  $query->condition('s.field_worker_status_value', 'Approved');
+
+  ##Filter to role: team leader
+  $query->leftJoin('field_data_endpoints', 'rrel', 'rrel.endpoints_entity_id = reg.id AND rrel.bundle = :bundle3 AND rrel.endpoints_entity_type = :type3', array(':bundle3' => 'has_applied_for_role', ':type3' => 'registrations'));
+  $query->leftJoin('field_data_endpoints', 'rrel2', 'rrel2.revision_id = rrel.revision_id AND rrel2.bundle = :bundle4 AND rrel2.endpoints_entity_type = :type4', array(':bundle4' => 'has_applied_for_role', ':type4' => 'volunteer_role'));
+  $query->condition('rrel2.endpoints_entity_id', 2);
+
+  ##Get Zone
+  $query->leftJoin('field_data_endpoints', 'zrel', 'zrel.endpoints_entity_id = w.id AND zrel.bundle = :bundle5 AND zrel.endpoints_entity_type = :type5', array(':bundle5' => 'is_assigned_to_zone', ':type5' => 'worker'));
+  $query->leftJoin('field_data_endpoints', 'zrel2', 'zrel2.revision_id = zrel.revision_id AND zrel2.bundle = :bundle6 AND zrel2.endpoints_entity_type = :type6', array(':bundle6' => 'is_assigned_to_zone', ':type6' => 'zone'));
+  $query->leftJoin('eck_zone', 'z', 'zrel2.endpoints_entity_id = z.id');
+  $query->addField('z', 'title', 'zone');
+
+  ##Optional Filter specific locations
+  if(isset($filter['location'])){
+    $query->leftJoin('field_data_endpoints', 'rel', 'rel.endpoints_entity_id = reg.id AND rel.bundle = :bundle AND rel.endpoints_entity_type = :type', array(':bundle' => 'has_applied_for_location', ':type' => 'registrations'));
+    $query->leftJoin('field_data_endpoints', 'rel2', 'rel2.revision_id = rel.revision_id AND rel2.bundle = :bundle2 AND rel2.endpoints_entity_type = :type2', array(':bundle2' => 'has_applied_for_location', ':type2' => 'location'));
+    $db_or = db_or();
+    foreach($filter['location'] as $location){
+      $db_or->condition('rel2.endpoints_entity_id', $location);
+    }
+    $query->condition($db_or);
+  }
+
+  $result = $query->execute()->fetchAll();
+  foreach($result as $record){
+    $items[$record->id] = $record->title;
+    if(!empty($record->zone)){
+      $items[$record->id] .= ' ('.$record->zone.')';
+    }
+  }
+
+  return $items;
+}
+
+//TODO: Page to edit users with all relations and related entities (esp. careful with payments and allowed relation-combinations)
+//TODO: Page to delete users with all relations and related entities (esp. careful with payments)
+//ToDo: Ability to delete a single year's registration for a user, along with all associated entities.
+
+
+################ The Application Form ##################
+
+function _pond_regos_application_form_steps() {
+  return array(
+      1 => array(
+        'form' => 'pond_regos_application_form_step1',
+        'label' => t('General'),
+      ),
+      2 => array(
+        'form' => 'pond_regos_application_form_step2',
+        'label' => t('Personal Details'),
+      ),
+      3 => array(
+        'form' => 'pond_regos_application_form_step3',
+        'label' => t('Assessment'),
+      ),
+      4 => array(
+        'form' => 'pond_regos_application_form_step4',
+        'label' => t('Merchandise'),
+      ),
+      5 => array(
+        'form' => 'pond_regos_application_form_step5',
+        'label' => t('Terms & Conditions'),
+      ),
+    );
+}
+
+
+function pond_regos_application_form($form, &$form_state) {
+  global $user;
+
+  $year = pond_get_year(1);
+
+  $nation = pond_nations_get();
+  $nation = entity_load_single('nation', $nation);
+  $nation_rego_title = pond_regos_get_field_value('nation', $nation, 'field_rego_form_title');
+
+  drupal_set_title(t('!title !year Application', array('!year' => $year, '!title' => $nation_rego_title)));
+
+  //If the year they have selected isn't open for registrations.
+  if(!pond_check_year()){
+    $old_year = pond_get_year();//Unrestricted
+    drupal_set_message('Applications are closed for '.$old_year.'. Apply now for '.$year.'.');
+    return array();
+  }
+  //Check if the user has already applied for this year.
+  if(pond_check_for_application()){
+    drupal_set_message('You have already applied for '.$year.'.');
+    return array();
+  }
+
+  //Load up the Rego form for fields to use throughout the multistep.
+  //@see pond_regos_strip_fields().
+  //This is the alternative to pond_attach_fieldgroups().
+  $rego_form = $tmp = array();
+  $skeleton = entity_create('registrations', array('type' => 'registrations'));
+  field_attach_form('registrations', $skeleton, $rego_form, $form_state);
+
+  //Legacy: We are not using this field anymore - it is all an attribute.
+  $rego_form['field_year']['#access'] = FALSE;
+
+  //Do my steps stuff.
+  if (empty($form_state['step'])) {
+    $form_state['step'] = 1;
+    $form_state['step_information'] = _pond_regos_application_form_steps();
+  }
+  $step = &$form_state['step'];
+  $form = $form_state['step_information'][$step]['form']($form, $form_state, $year, $rego_form);
+
+  $form['#prefix'] = '<div id="form-replace">';
+  $form['#suffix'] = '</div>';
+
+  //Why do I have to attach this to the form? Because for some reason when I attach it to the field it doesn't load when the field is pulled in using AJAX form reload.
+  $form['#attached'] = array('js' => array(
+    'https://maps.google.com/maps/api/js?key=AIzaSyAJCVNSzHmA1X4HrRX4DzNxblgv_bWDFJY&sensor=true&libraries=places' => array('type' => 'external', 'group' => JS_LIBRARY),
+  ));
+
+  foreach($form_state['step_information'] as $num => $step_info){
+    $class = array();
+    if($num == $step){
+      $class[] = 'active';
+    }
+    if($num < $step){
+      $class[] = 'complete';
+    }
+    $items[] = array('data' => $step_info['label'], 'class' => $class);
+  }
+  $form['steps'] = array(
+    '#type' => 'markup',
+    '#markup' => theme('item_list', array('items' => $items, 'title' => '', 'type' => 'ul', 'attributes' => array('class' => array('steps', 'clearfix')))),
+    );
+
+  if ($step < count($form_state['step_information'])) {
+    $form['next'] = array(
+      '#type' => 'submit',
+      '#value' => t('Next'),
+      '#name' => 'next',
+      '#weight' => 99,
+      '#submit' => array('pond_regos_application_form_next_submit'),
+    );
+  }
+  else {
+    $form['finish'] = array(
+      '#type' => 'submit',
+      '#value' => t('Submit Application'),
+      '#weight' => 98,
+    );
+  }
+
+  if ($step > 1) {
+    $form['prev'] = array(
+      '#type' => 'submit',
+      '#value' => t('Back'),
+      '#name' => 'prev',
+      '#weight' => 100,
+      '#submit' => array('pond_regos_application_form_previous_submit'),
+      '#limit_validation_errors' => array(),
+    );
+  }
+
+
+  if (function_exists($form_state['step_information'][$step]['form'] . '_validate')) {
+    $form['next']['#validate'] = array($form_state['step_information'][$step]['form'] . '_validate');
+  }
+
+  return $form;
+}
+
+function pond_regos_application_form_previous_submit($form, &$form_state) {
+  $current_step = &$form_state['step'];
+  $form_state['step_information'][$current_step]['stored_values'] = $form_state['values'];
+  $form_state['step_information'][$current_step]['stored_form_elements'] = $form;
+
+  if ($current_step > 1) {
+    $current_step--;
+    $form_state['values'] = $form_state['step_information'][$current_step]['stored_values'];
+  }
+  $form_state['rebuild'] = TRUE;
+}
+
+function pond_regos_application_form_next_submit($form, &$form_state) {
+  $current_step = &$form_state['step'];
+  $form_state['step_information'][$current_step]['stored_values'] = $form_state['values'];
+  $form_state['step_information'][$current_step]['stored_form_elements'] = $form;
+
+  if ($current_step < count($form_state['step_information'])) {
+    $current_step++;
+    if (!empty($form_state['step_information'][$current_step]['stored_values'])) {
+      $form_state['values'] = $form_state['step_information'][$current_step]['stored_values'];
+    }
+    else {
+      $form_state['values'] = array();
+    }
+    $form_state['rebuild'] = TRUE;  // Force rebuild with next step.
+    return;
+  }
+}
+
+function pond_regos_application_form_submit($form, &$form_state) {
+
+  $full_form = array();
+  $current_step = &$form_state['step'];
+  $form_state['step_information'][$current_step]['stored_values'] = $form_state['values'];
+  $form_state['step_information'][$current_step]['stored_form_elements'] = $form;
+
+  foreach($form_state['step_information'] as $step){
+    //Put the values from each state into $form_state['values']
+    $form_state['values'] = array_merge($form_state['values'], $step['stored_values']);
+    $full_form = array_merge($full_form, $step['stored_form_elements']);
+  }
+
+  $year = pond_get_year(1);
+  global $user;//Get logged in user
+  $user_properties = array(
+    'name' => $form_state['values']['user_mail'],
+    'mail' => $form_state['values']['user_mail'],
+    'init' => $form_state['values']['user_mail'],
+    'status' => 1,
+    'access' => REQUEST_TIME,
+  );
+  if(isset($form_state['values']['user']['user_password']) && !empty($form_state['values']['user']['user_password'])){
+    //Existing users don't see a password field in the rego form.
+    $user_properties['pass'] = $form_state['values']['user']['user_password'];
+  }
+  $user_form_values = $form_state['values']['user'];
+  unset($user_form_values['field_photo']);
+
+  if(empty($user->uid)){//Not already logged in
+    ## Make a New User
+    $newuser = user_save(drupal_anonymous_user(), array_merge($user_form_values, $user_properties));
+    //Login the new user
+    $user = user_load($newuser->uid);
+    user_login_finalize();
+  } else {
+    ## Edit Existing User
+    user_save($user, array_merge($user_form_values, $user_properties));
+  }
+
+
+  // Set Title: Mr Chris Gillis (M|25)
+  $base_title = $form_state['values']['user']['field_prefix_name']['und'][0]['value'].' '.
+          $form_state['values']['user']['field_first_name']['und'][0]['value'].' '.
+          $form_state['values']['user']['field_last_name']['und'][0]['value']. ' ('.
+          $form_state['values']['user']['field_user_gender']['und'][0]['value'].'|'.
+          pond_get_age($form_state['values']['user']['field_user_dob']['und'][0]['value'], $year).')';
+
+  ## Make a New Registration
+  $entity = entity_create('registrations', array('type' => 'registrations'));
+  field_attach_form_validate($entity->entityType(), $entity, $full_form, $form_state);
+  field_attach_submit($entity->entityType(), $entity, $full_form, $form_state);
+  $entity->title = $base_title.' R'.substr($year, 2, 2);
+  $entity->uid = $user->uid;
+  $entity->created = REQUEST_TIME;
+  $entity->year = $year;
+  $entity->save();
+
+  ## Make a New Worker
+  $wentity = entity_create('worker', array('type' => 'worker'));
+  field_attach_form_validate($wentity->entityType(), $wentity, $full_form, $form_state);
+  field_attach_submit($wentity->entityType(), $wentity, $full_form, $form_state);
+  $wentity->title = $base_title.' W'.substr($year, 2, 2);
+  $wentity->uid = $user->uid;
+  $wentity->year = $year;
+  $wentity->save();
+
+  ## Make a new international application
+  if(!empty($form_state['values']['international'])){
+    $new_international_entity = entity_create('international_application', array('type' => 'international_application'));
+    field_attach_form_validate($new_international_entity->entityType(), $new_international_entity, $full_form['international'], $form_state);
+    field_attach_submit($new_international_entity->entityType(), $new_international_entity, $full_form['international'], $form_state);
+    $new_international_entity->title = $base_title.' Int'.substr($year, 2, 2);
+    $new_international_entity->uid = $user->uid;
+    $new_international_entity->year = $year;
+    $new_international_entity->save();
+  }
+
+  ## Make a New Church
+  if(!empty($form_state['values']['church_other'])){
+    //"Other Church" is ticked
+    $new_church_entity = entity_create('church', array('type' => 'church'));
+    field_attach_form_validate($new_church_entity->entityType(), $new_church_entity, $full_form['church_container']['new_church'], $form_state);
+    field_attach_submit($new_church_entity->entityType(), $new_church_entity, $full_form['church_container']['new_church'], $form_state);
+    $new_church_entity->title = $form_state['values']['new_church']['church_name'];
+    $new_church_entity->save();
+    // Link to the new church
+    $church_id = $new_church_entity->id;
+  } else {
+    // Or link to an existing church
+    $selected_church = pond_regos_autocomplete_interpret($form_state['values']['church']);
+    $church_id = $selected_church->id;
+  }
+
+  ## Make a New Referee Church
+  if(!empty($form_state['values']['referee_church_other'])){
+    //"Other Referee Church" is ticked
+    $new_referee_church_entity = entity_create('church', array('type' => 'church'));
+    field_attach_form_validate($new_referee_church_entity->entityType(), $new_referee_church_entity, $full_form['referee_container']['new_referee_church'], $form_state);
+    field_attach_submit($new_referee_church_entity->entityType(), $new_referee_church_entity, $full_form['referee_container']['new_referee_church'], $form_state);
+    $new_referee_church_entity->title = $form_state['values']['new_referee_church']['church_name'];
+    $new_referee_church_entity->save();
+    // Link to the new church
+    $referee_church_id = $new_referee_church_entity->id;
+  } elseif(!empty($form_state['values']['referee_church_new'])) {
+    // Link to the church we just made earlier
+    $referee_church_id = $church_id;
+  } else {
+    // Or link to an existing church
+    $selected_referee_church = pond_regos_autocomplete_interpret($form_state['values']['referee_church']);
+    $referee_church_id = $selected_referee_church->id;
+  }
+
+
+  ## Make a New Referee
+  if(!empty($form_state['values']['new_referee']['referee_name'])){
+    $new_referee_entity = entity_create('referee', array('type' => 'referee'));
+    field_attach_form_validate($new_referee_entity->entityType(), $new_referee_entity, $full_form['referee_container']['new_referee'], $form_state);
+    field_attach_submit($new_referee_entity->entityType(), $new_referee_entity, $full_form['referee_container']['new_referee'], $form_state);
+    $new_referee_entity->title = $form_state['values']['new_referee']['referee_name'];
+    $new_referee_entity->created = REQUEST_TIME;
+    $new_referee_entity->save();
+    // Link the new referee to the selected church
+    $relation = relation_create('goes_to_church', array(
+        array('entity_type' => 'referee', 'entity_id' => $new_referee_entity->id),
+        array('entity_type' => 'church', 'entity_id' => $referee_church_id),
+        ));
+    $rid = relation_save($relation);
+    // Link to the new referee
+    $referee_id = $new_referee_entity->id;
+  } else {
+    // Or link to an existing referee
+    $referee_id = $form_state['values']['referee'];
+  }
+
+
+  ## Link Rego to Church
+  $relation = relation_create('goes_to_church', array(
+      array('entity_type' => 'registrations', 'entity_id' => $entity->id),
+      array('entity_type' => 'church', 'entity_id' => $church_id),
+      ));
+  $rid = relation_save($relation);
+
+  ## Link Rego to Referee
+  $relation = relation_create('listed_referee', array(
+      array('entity_type' => 'registrations', 'entity_id' => $entity->id),
+      array('entity_type' => 'referee', 'entity_id' => $referee_id),
+      ));
+  $rid = relation_save($relation);
+
+  ## Link Rego to Location
+  $relation = relation_create('has_applied_for_location', array(
+      array('entity_type' => 'registrations', 'entity_id' => $entity->id),
+      array('entity_type' => 'location', 'entity_id' => $form_state['values']['location']),
+      ));
+  $rid = relation_save($relation);
+
+  ## Link Rego to Role
+  $relation = relation_create('has_applied_for_role', array(
+      array('entity_type' => 'registrations', 'entity_id' => $entity->id),
+      array('entity_type' => 'volunteer_role', 'entity_id' => $form_state['values']['role']),
+      ));
+  $rid = relation_save($relation);
+
+  ## Link Rego to Dates
+  foreach($form_state['values']['dates'] as $date){
+    if(!empty($date)){
+      $relation = relation_create('has_applied_for_dates', array(
+          array('entity_type' => 'registrations', 'entity_id' => $entity->id),
+          array('entity_type' => 'night', 'entity_id' => $date),
+          ));
+      $rid = relation_save($relation);
+      //If this is the last rego that fits, then deactivate the relation.
+      pond_regos_check_cutoffs($form_state['values']['location'], $form_state['values']['role'], $date);
+    }
+  }
+
+  ## Link Rego to Group
+  /*
+  if(!empty($form_state['values']['group_code'])){
+    $query = new EntityFieldQuery();
+    $result = $query->entityCondition('entity_type', 'group')
+            ->entityCondition('bundle', 'group')
+            ->fieldCondition('field_group_code', 'value', $form_state['values']['group_code'], '=')
+            ->execute();
+    if (isset($result['group'])) {
+      $relation = relation_create('is_part_of_group', array(
+          array('entity_type' => 'registrations', 'entity_id' => $entity->id),
+          array('entity_type' => 'group', 'entity_id' => key($result['group'])),
+          ));
+      $rid = relation_save($relation);
+    }
+  }*/
+
+  //Send mail to Volunteer
+  /*
+  $params['user'] = $user;
+  drupal_mail('pond_regos', 'to_volunteer', $user->mail, user_preferred_language($user), $params);
+  */
+
+  //Send mail to Referee
+  //Todo: Check why this is throwing an error. Maybe use entity_load_single?
+  /*
+  $referees = entity_load('referee', array($referee_id));
+  if(!empty($referees[$referee_id]->field_referee_email['und'][0]['value'])){
+    $refmail = $referees[$referee_id]->field_referee_email['und'][0]['value'];
+    $params['ref'] = $referees[$referee_id];
+    drupal_mail('pond_regos', 'to_referee', $refmail, user_preferred_language($user), $params);
+  }*/
+
+  //Finish
+  rules_invoke_event('pond_regos_new_registration', $entity);
+  drupal_set_message('Thankyou for applying for Red Frogs Schoolies.');
+  $form_state['redirect'] = 'home';
+  //$form_state['redirect'] = 'http://www.redfrogs.com.au/hotelchaplaincy/schoolie/thank-you-rego';
+
+  //Todo: Check the cutoff amount assigned to this location//date//role combo by counting all matching regos.
+  //If it has been reached, deactivate the relation
+}
+
+function pond_regos_get_field_value($entity_type, $entity, $field_name, $delta=0, $return='value'){
+  if(is_numeric($entity)){
+    //I only have an ID. Load the whole entity.
+    $entity = entity_load_single($entity_type, $entity);
+  }
+  $field = field_get_items($entity_type, $entity, $field_name);
+  return isset($field[$delta][$return])?$field[$delta][$return]:FALSE;
+}
+
+function pond_regos_date_sort($a, $b) {
+    if ($a['title'] == $b['title']) { return 0; }
+    if(strstr($a['title'], 'Week 2') && !strstr($b['title'], 'Week 2')){ return 1; }
+    if(!strstr($a['title'], 'Week 2') && strstr($b['title'], 'Week 2')){ return -1; }
+    if(strstr($a['title'], 'Full Time') && !strstr($b['title'], 'Full Time')){ return -1; }
+    if(!strstr($a['title'], 'Full Time') && strstr($b['title'], 'Full Time')){ return 1; }
+    if(strstr($a['title'], 'Block A') && !strstr($b['title'], 'Block B')){ return 1; }
+    if(strstr($a['title'], 'Block B')){ return 1; }
+
+    return ($a['title'] < $b['title']) ? -1 : 1;
+}
+
+function pond_regos_title_sort($a, $b) {
+    if ($a['title'] == $b['title']) {
+        return 0;
+    }
+    return ($a['title'] < $b['title']) ? -1 : 1;
+}
+
+function pond_regos_get_active_locations($year = '') {
+  if(empty($year)){
+    $year = pond_get_year();
+  }
+
+  $return = &drupal_static(__FUNCTION__ . ':' . $year);
+  if (!isset($return))
+  {
+    if ($cache = cache_get('pond:active_locations:' . $year, 'cache_pond'))
+    {
+      $return = $cache->data;
+    }
+    else
+    {
+
+      $default_location = 4;//If not selected, default is Gold Coast (4)
+      $default_date_week = 1;//If not selected, default is the Week 1 Full Time block
+      $default_date_type = 'Full Time';//If not selected, default is the Week 1 Full Time block
+      $default_role = 1;//If not selected, default is Team Member (1)
+
+      $locations = &drupal_static('all_locations');
+      if (!isset($locations)) {
+        $locations = entity_load('location');
+      }
+
+      foreach($locations as $location_id => $location){
+        $location_active = pond_regos_get_field_value('location', $location, 'field_active');
+        if(!empty($location_active)){ //Only want to display active locations
+          $return['locations'][$location_id]['title'] = $location->title;
+
+          $dates_query = pond_relation_get('location', $location_id, 'allows_bookings_for');
+          if(is_array($dates_query['allows_bookings_for'])){
+            foreach($dates_query['allows_bookings_for'] as $date_relation){
+              $date_relation_active = pond_regos_get_field_value('relation', $date_relation, 'field_active');
+              if(!empty($date_relation_active)){
+                $date_id = pond_regos_get_field_value('relation', $date_relation, 'endpoints', 1, 'entity_id');
+                $date = entity_load_single('night', $date_id);
+                if($date->year == $year){
+                  //The date block itself has no active toggle, only the relation.
+                  $return['locations'][$location_id]['dates'][$date_id]['title'] = pond_get_block_title($date, $date_relation);
+
+                  //If the date is set to Week 1 Full Time, make it the default.
+                  $date_type = pond_regos_get_field_value('night', $date, 'field_block_type');
+                  $date_week = pond_regos_get_field_value('night', $date, 'field_block_week');
+                  if($date_week == $default_date_week && $date_type == $default_date_type){
+                    $return['locations'][$location_id]['default_date'] = $date_id;
+                  }
+                  //Record the week for other uses (e.g. pond management dashboard)
+                  $return['locations'][$location_id]['dates'][$date_id]['week'] = $date_week;
+
+                  $roles_query = pond_relation_get('relation', $date_relation->rid, 'has_allowed_role');
+                  if(is_array($roles_query['has_allowed_role'])){
+                    foreach($roles_query['has_allowed_role'] as $role_relation){
+                      $role_relation_active = pond_regos_get_field_value('relation', $role_relation, 'field_active');
+                      if(!empty($role_relation_active)){
+                        $role_id = pond_regos_get_field_value('relation', $role_relation, 'endpoints', 1, 'entity_id');
+                        $role = entity_load_single('volunteer_role', $role_id);
+                        $return['locations'][$location_id]['dates'][$date_id]['roles'][$role_id]['title'] = $role->title;
+                        $return['locations'][$location_id]['dates'][$date_id]['roles'][$role_id]['accom'] = pond_regos_get_field_value('relation', $role_relation, 'field_accommodation_options');
+                      }
+                    }
+                  }
+                  if(!isset($return['locations'][$location_id]['dates'][$date_id]['roles']) || empty($return['locations'][$location_id]['dates'][$date_id]['roles'])){
+                    //If there are no active roles, remove this date from the array
+                    unset($return['locations'][$location_id]['dates'][$date_id]);
+                  } else {
+                    //Sort Roles by title
+                    uasort($return['locations'][$location_id]['dates'][$date_id]['roles'], 'pond_regos_title_sort');
+                    //Find a default role
+                    $return['locations'][$location_id]['dates'][$date_id]['default_role'] = (isset($return['locations'][$location_id]['dates'][$date_id]['roles'][$default_role])) ? $default_role : key($return['locations'][$location_id]['dates'][$date_id]['roles']);
+                  }
+                }
+              }
+            }
+          }
+          if(!isset($return['locations'][$location_id]['dates']) || empty($return['locations'][$location_id]['dates'])){
+            //If there are no active dates, remove this location from the array
+            unset($return['locations'][$location_id]);
+          } else {
+            //Sort Dates by title (Might want to change this later...)
+            uasort($return['locations'][$location_id]['dates'], 'pond_regos_date_sort');
+            //Return a default date
+            if(empty($return['locations'][$location_id]['default_date'])){
+              $return['locations'][$location_id]['default_date'] = key($return['locations'][$location_id]['dates']);
+            }
+          }
+        }
+      }
+      //Sort Locations by title
+      uasort($return['locations'], 'pond_regos_title_sort');
+      //Find a default location
+      $return['default_location'] = (isset($return['locations'][$default_location]))? $default_location : key($return['locations']);
+      if(!isset($return['locations'][4])){
+        //I'm trying to find an intermittent caching bug...
+        //If Gold Coast is not active, then there is probably a bug.
+        watchdog('pond_cache', print_r($return, 1), array(), WATCHDOG_ALERT);
+      } else {
+        cache_set('pond:active_locations:' . $year, $return, 'cache_pond');
+      }
+    }
+  }
+
+  return $return;
+}
+
+function pond_regos_application_form_location_container(&$form, &$form_state, $year, $defaults = array(), $all_access = FALSE) {
+
+  ### Locations, Dates & Roles ###
+  $all_roles_options = $roles_options = array();
+  $locations = pond_regos_get_active_locations($year);
+  if($all_access){
+    $all_locations = entity_load('location');
+    foreach($all_locations as $all_location){
+      $string = isset($locations['locations'][$all_location->id])?'':' (INACTIVE)';
+      $locations_options[$all_location->id] = $all_location->title.$string;
+    }
+  } else {
+    if(module_exists('pond_nations') && !user_access('all locations')){
+      //Should I put this into pond_regos_get_active_locations() and cache it?
+      $natlocs = pond_nations_get_locations();
+      $locations['locations'] = array_intersect_key($locations['locations'], array_flip($natlocs));
+      $locations['default_location'] = (isset($locations['locations'][$locations['default_location']]))? $locations['default_location'] : key($locations['locations']);
+    }
+    if(empty($locations['locations'])){
+      drupal_set_message(''.$year.' Applications are not yet open in this country.');
+      drupal_goto();
+    }
+    foreach($locations['locations'] as $location_id => $location_info){
+      $locations_options[$location_id] = $location_info['title'];
+    }
+  }
+  $location_selected = isset($form_state['values']['location']) ? $form_state['values']['location'] : (isset($defaults['location']) ? $defaults['location'] : $locations['default_location']);
+
+  ## Dates
+  if($all_access){
+
+    $dates_query = pond_relation_get('location', $location_selected, 'allows_bookings_for');
+    if(is_array($dates_query['allows_bookings_for'])){
+      foreach($dates_query['allows_bookings_for'] as $date_relation){
+        $date_id = pond_regos_get_field_value('relation', $date_relation, 'endpoints', 1, 'entity_id');
+        $date = entity_load_single('night', $date_id);
+        if($date->year == $year){
+          $string = isset($locations['locations'][$location_selected]['dates'][$date->id])?'':' (INACTIVE)';
+          $dates_options[$date->id] = pond_get_block_title($date).$string;
+        }
+      }
+    }
+
+  } else {
+    foreach($locations['locations'][$location_selected]['dates'] as $date_id => $date_info){
+      $dates_options[$date_id] = $date_info['title'];
+      $all_roles_options[$date_id] = isset($all_roles_options[$date_id]) ? (array)$all_roles_options[$date_id] + (array)$date_info['roles'] : $date_info['roles'];
+    }
+  }
+  if(isset($form_state['values']['dates'])){
+    $dates_selected = array_intersect_key($form_state['values']['dates'], $dates_options);
+  }
+  if(empty($dates_selected)){
+    if(isset($defaults['dates']) && array_key_exists($defaults['dates'][0], $dates_options)){
+      $dates_selected = $defaults['dates'];
+    } else {
+      $dates_selected = array($locations['locations'][$location_selected]['default_date'] => $locations['locations'][$location_selected]['default_date']);
+    }
+  }
+
+  ## Roles
+  if($all_access){
+    $all_roles = entity_load('volunteer_role');
+    foreach($all_roles as $all_role){
+      $roles_options[$all_role->id] = $all_role->title;
+    }
+  } else {
+    //Feed my dates into a filter before I get allowed roles. (If full time, then forget Block A)
+    $unique_dates_selected = pond_regos_unique_nights($dates_selected);
+    if(!empty($unique_dates_selected)){
+      $i = 0;
+      foreach($unique_dates_selected as $id){
+        if(!empty($id)){
+          //This funkiness is just because a user can select multiple dates, which allows an aggregrate of available roles
+          //With the first lot we add them all...
+          if($i==0){
+            foreach($all_roles_options[$id] as $key => $value){
+              $roles_options[$key] = $value['title'];
+            }
+          }
+          $i++;
+          //Then we only ever take away... leaving us the least possible available roles
+          //TODO: This isn't working. When I select multiple dates, too many role options display.
+          $roles_options = array_intersect_key($roles_options, (array)$all_roles_options[$id]);
+        }
+      }
+    }
+  }
+
+  if(isset($form_state['values']['role']) && array_key_exists($form_state['values']['role'], $roles_options)){
+    $role_selected = $form_state['values']['role'];
+  } else if(isset($defaults['role']) && array_key_exists($defaults['role'], $roles_options)){
+    $role_selected = $defaults['role'];
+  } else if(array_key_exists($locations['locations'][$location_selected]['dates'][key($dates_selected)]['default_role'], $roles_options)){
+    $role_selected = $locations['locations'][$location_selected]['dates'][key($dates_selected)]['default_role'];
+  } else {
+    $role_selected = key($roles_options);
+  }
+
+  $form['location_container'] = array(
+      '#type' => 'container',
+      '#tree' => FALSE,
+  );
+
+  $form['location_container']['location'] = array(
+      '#type' => 'select',
+      '#title' => t('Location'),
+      '#options' => $locations_options,
+      '#default_value' => $location_selected,
+      '#weight' => 1,
+      //'#required' => TRUE,
+      '#ajax' => array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      ),
+  );
+
+  $form['location_container']['role'] = array(
+      '#type' => 'select',
+      '#title' => t('Role'),
+      '#options' => $roles_options,
+      '#default_value' => $role_selected,
+      '#weight' => 2,
+      //'#required' => TRUE, // mucks with AJAX: Do it in the val function instead
+      '#ajax' => array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      ),
+  );
+  //Why do we unset this? So that AJAX can use the #default_value. See https://drupal.org/node/1100170
+  unset($form_state['input']['dates']);
+  $form['location_container']['dates'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Dates for ') . $locations_options[$location_selected],
+      '#options' => $dates_options,
+      '#default_value' => $dates_selected,
+      '#weight' => 3,
+      //'#required' => TRUE,
+      '#ajax' => array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      ),
+  );
+
+  return array(
+    'location_selected' => $location_selected,
+    'dates_selected' => $dates_selected,
+    'role_selected' => $role_selected,
+    'all_roles_options' => $all_roles_options,
+    );
+}
+
+/**
+ * Step 1
+ */
+function pond_regos_application_form_step1($form, &$form_state, $year, $rego_form) {
+
+  $fieldgroups = array('group_step_1');
+  pond_regos_strip_fields($rego_form, $fieldgroups);
+  $form = $rego_form;
+
+  //Add a couple extra AJAX triggers for elements that affect pricing
+  $form['field_accommodation']['und']['#ajax'] = array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      );
+  $form['field_dietary']['und']['#ajax'] = array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      );
+
+  ### Insert Locations, Dates, Roles (moved this into its own function so other forms could utilise it)
+  $params = pond_regos_application_form_location_container($form, $form_state, $year);
+  extract($params);
+
+  $international = pond_regos_get_field_value('location', $location_selected, 'field_is_international');
+  if($international == 1){
+    //Output passport fields
+    $form['international'] = array(
+      '#type' => 'container',
+      '#tree' => TRUE,
+      '#parents' => array('international'),
+    );
+    $international = entity_create('international_application', array('type' => 'international_application'));
+    field_attach_form('international_application', $international, $form['international'], $form_state);
+  }
+
+  $accom_settings = isset($all_roles_options[key($dates_selected)][$role_selected]['accom'])?$all_roles_options[key($dates_selected)][$role_selected]['accom']:FALSE;
+  switch($accom_settings){
+    case 'yes': //Accommodation is Mandatory
+      $form['field_accommodation']['und']['#value'] = 1;
+      $accom_selected = 1;
+      $form['field_accommodation']['und']['#access'] = FALSE;
+      break;
+    case 'no': //Accommodation is Not Available
+      $form['field_accommodation']['und']['#value'] = 0;
+      $accom_selected = 0;
+      $form['field_accommodation']['und']['#access'] = FALSE;
+      break;
+    case 'may': //Accommodation is Optional
+    default:
+      $accom_selected = isset($form_state['values']['field_accommodation']) ? $form_state['values']['field_accommodation']['und'][0]['value'] : 1;
+      $form['field_accommodation']['und']['#access'] = TRUE;
+      $form['field_accommodation']['und']['#default_value'] = $accom_selected;
+  }
+  $dietary_selected = isset($form_state['values']['field_dietary']) ? $form_state['values']['field_dietary']['und'][0]['value'] : 0;
+
+  if(empty($dietary_selected)){
+    $form['field_dietary_details']['und']['#access'] = FALSE;
+  }
+
+  //Output Prices
+  if(module_exists('pond_payments')){
+    $currency = pond_nations_get_location_currency($location_selected);
+    $options = array(
+        'location' => $location_selected,
+        'dates' => $dates_selected,
+        'accommodation' => $accom_selected,
+        'dietary' => $dietary_selected,
+    );
+    $prices = pond_payments_calculate($options);
+    $total = 0;
+    if($prices){
+      foreach($prices as $price){
+        $rows[] = array($price['title'], $price['formatted']);
+        $total += $price['raw'];
+      }
+    }
+
+    $rows[] = array(
+      'data' => array(
+        '<strong>'.t('Total Cost:').'</strong>',
+        '<strong>'.$currency->sign.number_format($total,2).'</strong>'
+      ),
+      'class' => array('row-total'),
+    );
+    $prices_output = theme('table', array('rows' => $rows));
+    $form['prices'] = array(
+        '#type' => 'item',
+        '#title' => t('Prices'),
+        '#markup' => $prices_output,
+      );
+  }
+
+  return $form;
+}
+
+function pond_regos_application_form_step1_validate($form, &$form_state) {
+  $dates = FALSE;
+  foreach($form_state['values']['dates'] as $date){
+    if(!empty($date)){
+      $dates = TRUE;
+      if(!pond_regos_check_cutoffs($form_state['values']['location'], $form_state['values']['role'], $date)){
+        form_set_error('location', 'Sorry. The position you have applied for is now full. Please contact us if you have any questions.');
+      }
+    }
+  }
+  if(!$dates){
+    form_set_error('dates', 'Please select a Date');
+  }
+  if(empty($form_state['values']['role'])){
+    form_set_error('role', 'Please select a Role');
+  }
+}
+
+/**
+ * Change the order of years so most recent is first.
+ */
+function pond_regos_date_select_process_alter(&$element, &$form_state, $context) {
+  $element['year']['#options'] = array_reverse($element['year']['#options'], TRUE);
+  $label = array_pop($element['year']['#options']);
+  $element['year']['#options'] = array('' => $label) + $element['year']['#options'];
+}
+
+/**
+ * Step 2
+ */
+function pond_regos_application_form_step2($form, &$form_state, $year, $rego_form) {
+  global $user;
+
+  $fieldgroups = array('group_step_2');
+  pond_regos_strip_fields($rego_form, $fieldgroups);
+  $form = $rego_form;
+
+  //pond_attach_fieldgroups($form, $form_state, $fieldgroups, 'registrations', 'registrations');
+  //field_attach_form('registrations', $skeleton, $form, $form_state, NULL, array('field_name' => 'field_bluecard_number'))
+
+  $lang = $form['field_bluecard']['#language'];
+  $form['field_bluecard'][$lang]['#ajax'] = array(
+    'callback' => 'pond_regos_callback',
+    'wrapper' => 'form-replace',
+  );
+
+  if(!isset($form_state['values']['field_bluecard'][$lang][0]['value']) || $form_state['values']['field_bluecard'][$lang][0]['value'] != 1){
+    $form['field_bluecard_number'][$lang]['#access'] = FALSE;
+    $form['field_bluecard_expiry'][$lang]['#access'] = FALSE;
+  }
+
+  $form['user'] = array(
+    '#type' => 'container',
+    '#tree' => TRUE,
+    '#parents' => array('user'),
+  );
+
+  $account = (isset($user->uid))?user_load($user->uid):entity_create('user', array('type' => 'user'));
+
+  field_attach_form('user', $account, $form['user'], $form_state);
+  $form['user']['field_photo']['#access'] = FALSE;
+  $form['user']['field_photo_rules']['#access'] = FALSE;
+
+  $form['user']['emails_container'] = array(//This will not ordering properly. See pond_regos_field_attach_form.
+    '#type' => 'container',
+    '#tree' => FALSE,
+  );
+  if(isset($_REQUEST['email'])) { $mail = $_REQUEST['email']; }
+  if(isset($user->mail)) { $mail = $user->mail; }
+  $form['user']['emails_container']['user_mail'] = array(
+      '#title' => 'Email Address',
+      '#type' => 'textfield',
+      '#required' => TRUE,
+      '#default_value' => isset($mail)?$mail:'',
+  );
+  $form['user']['emails_container']['user_mail_confirm'] = array(
+      '#title' => 'Confirm your Email Address',
+      '#type' => 'textfield',
+      '#required' => TRUE,
+  );
+
+  if(!isset($account->uid) || empty($account->uid)){
+    $form['user']['user_password'] = array(
+        '#type' => 'password_confirm',
+        '#required' => TRUE,
+        //'#default_value' => $form_state['values']['new_user']['user_password'],
+    );
+  }
+
+  return $form;
+}
+
+
+function pond_regos_application_form_step2_validate($form, &$form_state) {
+  $valmail = valid_email_address($form_state['values']['user_mail']);
+  if(empty($valmail)){
+    form_set_error('user_mail', 'Invalid Email Address');
+  }
+
+  global $user;
+  $valuser = user_load_by_mail($form_state['values']['user_mail']);
+  if(!empty($valuser->uid) && empty($user->uid)){
+    form_set_error('user_mail', 'Email Address already in use. Try logging in instead.');
+  }
+
+  if($form_state['values']['user_mail'] != $form_state['values']['user_mail_confirm']){
+    form_set_error('user_mail', 'Email addresses do not match');
+  }
+
+  $lang = $form['field_bluecard']['#language'];
+  if(!empty($form_state['values']['field_bluecard'][$lang][0]['value'])){
+    //If bluecard = 1, check that number and expiry have been entered.
+    if(empty($form_state['values']['field_bluecard_number'][$lang][0]['value'])){
+      form_set_error('field_bluecard_number', 'Please enter your Bluecard Number');
+    }
+    if(empty($form_state['values']['field_bluecard_expiry'][$lang][0]['value'])){
+      form_set_error('field_bluecard_expiry', 'Please enter your Bluecard Expiry Date');
+    }
+  }
+}
+
+/**
+ * Step 3
+ */
+function pond_regos_application_form_step3($form, &$form_state, $year, $rego_form) {
+  //TOdo: Modify the validation function to ensure a valid church has been selected.
+  $lang = 'und';
+
+  $fieldgroups = array('group_step_3');
+  pond_regos_strip_fields($rego_form, $fieldgroups);
+  $form = $rego_form;
+
+  $form['field_is_chaplain'][$lang]['#ajax'] = array(
+    'callback' => 'pond_regos_callback',
+    'wrapper' => 'form-replace',
+  );
+
+  if(!isset($form_state['values']['field_is_chaplain'][$lang][0]['value']) || $form_state['values']['field_is_chaplain'][$lang][0]['value'] != 1){
+    $form['field_is_chaplain_at'][$lang]['#access'] = FALSE;
+  }
+
+############################ Churches: Selected Values
+
+  $church_selected = isset($form_state['values']['church']) ? $form_state['values']['church'] : '';
+  $selected_church = pond_regos_autocomplete_interpret($church_selected);
+
+  $referee_church_selected = isset($form_state['values']['referee_church']) ? $form_state['values']['referee_church'] : '';
+  $selected_referee_church = pond_regos_autocomplete_interpret($referee_church_selected);
+
+############################ Churches: Base Form
+
+  //Create an entity so we can extract all the fields required
+  $skeleton_referee = entity_create('referee', array('type' => 'referee'));
+  $skeleton_church = entity_create('church', array('type' => 'church'));
+
+  $form['church_container'] = array(
+      '#type' => 'container',
+      '#tree' => FALSE,
+    );
+
+  $form['church_container']['church'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Church you currently attend'),
+      '#description' => t('Begin typing the name of the church, and then select it from the list that appears.'),
+      '#default_value' => $church_selected,
+      '#autocomplete_path' => 'pond/autocomplete/church',
+      '#required' => TRUE,
+      '#ajax' => array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      ),
+  );
+
+  $form['church_container']['church_other'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('My church is not in this list'),
+      '#ajax' => array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      ),
+  );
+
+  $form['church_container']['church_info'] = array(
+      '#type' => 'item',
+      '#title' => t('No Church Selected'),
+      '#markup' => t('Please choose a church.'),
+  );
+
+  $form['church_container']['new_church'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Enter Church Details'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+    '#tree' => TRUE,
+    '#parents' => array('new_church'),
+  );
+
+  $form['church_container']['new_church']['church_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Church Name'),
+    '#ajax' => array(
+      'callback' => 'pond_regos_callback',
+      'wrapper' => 'form-replace',
+    ),
+  );
+
+  field_attach_form('church', $skeleton_church, $form['church_container']['new_church'], $form_state);
+
+  $form['church_container']['new_church']['field_active']['#value'] = 0;
+  $form['church_container']['new_church']['field_active']['#access'] = FALSE;
+
+  $form['referee_container'] = array(
+      '#type' => 'container',
+      '#tree' => FALSE,
+    );
+
+  $form['referee_container']['referee_church'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Church your referee attends'),
+      '#description' => t('Begin typing the name of the church, and then select it from the list that appears.'),
+      '#default_value' => $referee_church_selected,
+      '#autocomplete_path' => 'pond/autocomplete/church',
+      '#required' => TRUE,
+      '#ajax' => array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      ),
+  );
+
+  $form['referee_container']['referee_church_new'] = array(
+      '#type' => 'checkbox',
+      '#title' => isset($form_state['values']['new_church']['church_name'])? t('My referee goes to ').$form_state['values']['new_church']['church_name'] : t('Error'),
+      '#ajax' => array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      ),
+  );
+
+  $form['referee_container']['referee_church_other'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('My referee\'s church is not in this list'),
+      '#ajax' => array(
+        'callback' => 'pond_regos_callback',
+        'wrapper' => 'form-replace',
+      ),
+  );
+
+  $form['referee_container']['referee_church_info'] = array(
+      '#type' => 'item',
+      '#title' => t('No Church Selected'),
+      '#markup' => t('Please choose a church.'),
+  );
+
+  $form['referee_container']['new_referee_church'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Enter Church Details'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+    '#tree' => TRUE,
+    '#parents' => array('new_referee_church'),
+  );
+
+  $form['referee_container']['new_referee_church']['church_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Church Name'),
+  );
+
+  field_attach_form('church', $skeleton_church, $form['referee_container']['new_referee_church'], $form_state);
+
+  $form['referee_container']['new_referee_church']['field_active']['#value'] = 0;
+  $form['referee_container']['new_referee_church']['field_active']['#access'] = FALSE;
+
+  $form['referee_container']['referee'] = array(
+    '#type' => 'select',
+    '#title' => t('Referees'),
+  );
+
+  $form['referee_container']['referee_other'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('My referee is not in this list'),
+    '#ajax' => array(
+      'callback' => 'pond_regos_callback',
+      'wrapper' => 'form-replace',
+    ),
+  );
+
+  $form['referee_container']['new_referee'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Enter Referee Details'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+    '#tree' => TRUE,
+    '#parents' => array('new_referee'),
+  );
+
+  $form['referee_container']['new_referee']['referee_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Name'),
+  );
+
+  field_attach_form('referee', $skeleton_referee, $form['referee_container']['new_referee'], $form_state);
+
+  $form['referee_container']['new_referee']['field_rel_ref_church']['#value'] = 0;
+  $form['referee_container']['new_referee']['field_rel_ref_church']['#access'] = FALSE;
+  $form['referee_container']['new_referee']['field_active']['#value'] = 0;
+  $form['referee_container']['new_referee']['field_active']['#access'] = FALSE;
+  $form['referee_container']['new_referee']['field_referee_status']['#value'] = 'pending';
+  $form['referee_container']['new_referee']['field_referee_status']['#access'] = FALSE;
+
+
+############################ Churches: AJAX Modifications
+
+  if(!empty($selected_church)){
+    $form['church_container']['church_info']['#title'] = $selected_church->title;
+    $form['church_container']['church_info']['#markup'] = pond_format_address('church', $selected_church);
+  }
+
+  if(!empty($selected_referee_church)){
+    $form['referee_container']['referee_church_info']['#title'] = $selected_referee_church->title;
+    $form['referee_container']['referee_church_info']['#markup'] = pond_format_address('church', $selected_referee_church);
+    $query = pond_relation_get('church', $selected_referee_church->id, 'goes_to_church');
+    $referee_options = array();
+    if(is_array($query['goes_to_church'])){
+      foreach($query['goes_to_church'] as $value){
+        //watchdog('pond_regos_rel', print_r($value, 1));
+        if($value->endpoints['und'][0]['entity_type'] == 'referee'){
+          $entity_id = $value->endpoints['und'][0]['entity_id'];
+          $entity = entity_load('referee', array($entity_id));
+          //watchdog('pond_regos_ref', print_r($entity, 1));
+          if(isset($entity[$entity_id]->id) && isset($entity[$entity_id]->field_referee_status['und'][0]['value']) && $entity[$entity_id]->field_referee_status['und'][0]['value'] == 'active'){
+            $referee_options[$entity_id] = $entity[$entity_id]->title;
+          }
+        }
+      }
+    }
+    asort($referee_options);
+    $referee_options = array(0 => 'Select a Referee')+(array)$referee_options;
+    $referee_selected = (isset($form_state['values']['referee']) && array_key_exists($form_state['values']['referee'], $referee_options)) ? $form_state['values']['referee'] : '';
+
+    $form['referee_container']['referee']['#title'] = t('Referees listed for ') . $selected_referee_church->title;
+    $form['referee_container']['referee']['#options'] = $referee_options;
+    $form['referee_container']['referee']['#default_value'] = $referee_selected;
+  }
+
+  if(empty($selected_referee_church)){
+    unset($form['referee_container']['referee']);
+    unset($form['referee_container']['referee_other']);
+  }
+
+  if(!empty($form_state['values']['church_other'])){
+    //It is ticked
+    unset($form['church_container']['church']);
+    unset($form['church_container']['church_info']);
+  }
+
+  if(empty($form_state['values']['church_other'])){
+    //It is NOT ticked
+    unset($form['church_container']['new_church']);
+  }
+
+  if(!isset($form_state['values']['new_church']['church_name']) || empty($form_state['values']['church_other'])){
+    unset($form['referee_container']['referee_church_new']);
+  }
+
+  if(!empty($form_state['values']['referee_church_other']) || !empty($form_state['values']['referee_church_new'])){
+    //Either box is ticked
+    unset($form['referee_container']['referee_church']);
+    unset($form['referee_container']['referee_church_info']);
+    unset($form['referee_container']['referee']);
+    unset($form['referee_container']['referee_other']);
+  }
+
+  if(empty($form_state['values']['referee_church_other']) && empty($form_state['values']['referee_church_new']) && empty($form_state['values']['referee_other'])){
+    //Neither box is ticked
+    unset($form['referee_container']['new_referee']);
+  }
+
+  if(empty($form_state['values']['referee_church_other'])){
+    unset($form['referee_container']['new_referee_church']);
+  }
+
+  if(!empty($form_state['values']['referee_church_new'])){
+    unset($form['referee_container']['referee_church_other']);
+    unset($form['referee_container']['new_referee_church']);
+  }
+
+  return $form;
+}
+
+function pond_regos_application_form_step3_validate($form, &$form_state) {
+
+  $selected_church = FALSE;
+  if(isset($form_state['values']['church']) && !empty($form_state['values']['church'])){
+    $selected_church = pond_regos_autocomplete_interpret($form_state['values']['church']);
+  }
+  if(empty($selected_church) && empty($form_state['values']['church_other'])){
+    form_set_error('church', 'Please select a Church');
+  }
+
+
+  $selected_referee_church = FALSE;
+  if(isset($form_state['values']['referee_church']) && !empty($form_state['values']['referee_church'])){
+    $selected_referee_church = pond_regos_autocomplete_interpret($form_state['values']['referee_church']);
+  }
+  if(empty($selected_referee_church) && empty($form_state['values']['referee_church_other']) && empty($form_state['values']['referee_church_new'])){
+    form_set_error('referee_church', 'Please select your Referee\'s Church');
+  }
+
+
+  if(empty($form_state['values']['referee']) && empty($form_state['values']['new_referee']['referee_name'])){
+    form_set_error('referee', 'Please select your Referee');
+  }
+
+  $lang = $form['field_is_chaplain']['#language'];
+  if($form_state['values']['field_is_chaplain'][$lang][0]['value'] == 1){
+    //If chaplain = 1, check that school has entered.
+    if(empty($form_state['values']['field_is_chaplain_at'][$lang][0]['value'])){
+      form_set_error('field_is_chaplain_at', 'Where are you a chaplain?');
+    }
+  }
+}
+
+/**
+ * Step 4
+ */
+function pond_regos_application_form_step4($form, &$form_state, $year, $rego_form) {
+
+  $fieldgroups = array('group_step_4');
+  pond_regos_strip_fields($rego_form, $fieldgroups);
+  $form = $rego_form;
+
+  $location_id = $form_state['step_information'][1]['stored_values']['location'];//Assuming location field is in step 1.
+  $hoodie = pond_regos_get_field_value('location', $location_id, 'field_includes_hoodie');
+  $form['field_hoodie_size']['#access'] = $hoodie;
+
+  /*Todo: make this a setting on the location (WA doesn't exist anymore)
+  $location_entity = entity_load('location', array($location_selected));
+  if($location_entity[$location_selected]->type != 'wa_location'){
+    $form['field_hoodie_size']['#access'] = FALSE;
+  }*/
+
+  return $form;
+}
+
+/**
+ * Step 5
+ */
+function pond_regos_application_form_step5($form, &$form_state, $year, $rego_form) {
+  $fieldgroups = array('group_step_5');
+  pond_regos_strip_fields($rego_form, $fieldgroups);
+  $form = $rego_form;
+  return $form;
+}
+
+
+function pond_regos_strip_fields(&$form, $allowed_groups){
+  $allowed_children = array();
+  foreach($form['#group_children'] as $child => $parent){
+    if(substr($child, 0, 6) == 'group_' && !in_array($child, $allowed_groups) && in_array($parent, $allowed_groups)){
+      $allowed_groups[] = $child;
+      //Recursion with additional sub-group
+      return pond_regos_strip_fields($form, $allowed_groups);
+    }
+  }
+  //By the time we get here, all groups and sub-groups should be in $allowed_groups
+  foreach($form['#group_children'] as $child => $parent){
+    if(!in_array($parent, $allowed_groups)){
+      //$form[$child]['#access'] = FALSE;
+      unset($form[$child]);
+    }
+  }
+}
+
+
+function pond_regos_autocomplete_church($string = "") {
+  $matches = array();
+  if ($string) {
+    $query = db_select('eck_church', 'c');
+    $query->leftJoin('field_data_field_active', 'a', 'c.id = a.entity_id AND c.type = a.bundle');
+    $query
+      ->fields('c', array('id', 'title'))
+      ->condition('c.title', '%' . db_like($string) . '%', 'LIKE')
+      ->condition('a.field_active_value', '1')
+      ->range(0, 10);
+    $result = $query->execute();
+    foreach ($result as $church) {
+      $matches[$church->title . " [$church->id]"] = check_plain($church->title);
+    }
+  }
+  drupal_json_output($matches);
+}
+
+function pond_regos_autocomplete_interpret($value, $type = 'church') {
+  $matches = array();
+  $id = 0;
+  // This preg_match() looks for the last pattern like [33334] and if found extracts the numeric portion.
+  $result = preg_match('/\[([0-9]+)\]$/', $value, $matches);
+  if ($result > 0) {
+    // If $result is nonzero, we found a match and can use it as the index into $matches.
+    $id = $matches[$result];
+    $entity = entity_load_single($type, $id);
+    return empty($entity) ? FALSE : $entity;
+  }
+}

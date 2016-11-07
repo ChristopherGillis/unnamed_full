@@ -1,0 +1,5 @@
+name = Pond Pastoral Checks
+description = Pastoral Check Entity edit forms on each referee
+package = "Pond Modules"
+dependencies[] = pond
+core = 7.x

@@ -1,0 +1,12 @@
+name = Pond Theme
+description = A simple one-column, tableless, fluid width administration theme.
+version = VERSION
+core = 7.x
+stylesheets[screen][] = pond_theme.css
+regions[content] = Content
+regions[help] = Help
+regions[page_top] = Page top
+regions[page_bottom] = Page bottom
+regions[sidebar_first] = First sidebar
+regions_hidden[] = sidebar_first
+base theme = seven

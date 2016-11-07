@@ -1,0 +1,13 @@
+name = Pond Theme 2013
+description = The 2013 version of the Pond.
+version = VERSION
+core = 7.x
+stylesheets[screen][] = pond_theme_13.css
+regions[header] = Header
+regions[help] = Help
+regions[page_top] = Page top
+regions[sidebar_first] = First sidebar
+regions[content] = Content
+regions[page_bottom] = Page bottom
+regions_hidden[] = sidebar_first
+base theme = seven

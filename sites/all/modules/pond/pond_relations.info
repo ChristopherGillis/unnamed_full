@@ -1,0 +1,6 @@
+name = Pond Relations
+description = Extras and Cleanup Functionality for Relation module
+package = "Pond Modules"
+dependencies[] = pond
+dependencies[] = relation
+core = 7.x

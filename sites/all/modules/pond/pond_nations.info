@@ -1,0 +1,6 @@
+name = Pond Nations
+description = Modifications for South Africa, etc.
+package = "Pond Modules"
+dependencies[] = pond
+dependencies[] = currency
+core = 7.x

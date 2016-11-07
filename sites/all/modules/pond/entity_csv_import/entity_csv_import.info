@@ -1,0 +1,5 @@
+name = Entity CSV Import
+description = Map CSV Values to Entity Fields
+dependencies[] = entity
+package = "Development"
+core = 7.x

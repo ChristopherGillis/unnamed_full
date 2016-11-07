@@ -1,0 +1,2837 @@
+<?php
+
+/*
+NOTE - Don't Upgrade "field_group" module. Newer version kills class names which wrecks styles. https://drupal.org/node/2109329
+NOTE - I hacked payment.module to allow negative payments. See https://drupal.org/node/2114785  ###### define('PAYMENT_MINIMUM_AMOUNT', -9999999);
+*/
+
+
+/**
+ * Implementation of hook_menu
+ */
+function pond_management_menu(){
+  $items = array();
+  $items['dash'] = array(
+    'title' => 'Dashboard',
+    'page callback' => 'pond_management_dashboard_page',
+    'access arguments' => array('access dashboard')
+  );
+  $items['dash/total'] = array(
+    'title' => 'All Applications',
+    'page callback' => 'pond_management_total_page',
+    'access arguments' => array('see all registrations'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/check'] = array(
+    'title' => 'Pastoral Checks',
+    'page callback' => 'pond_management_check_page',
+    'access arguments' => array('check registrations'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/approve'] = array(
+    'title' => 'Approvals',
+    'page callback' => 'pond_management_approve_page',
+    'access arguments' => array('approve registrations'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/allocate'] = array(
+    'title' => 'Allocations',
+    'page callback' => 'pond_management_allocate_page',
+    'access arguments' => array('allocate workers'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/bulk-payments'] = array(
+    'title' => 'Bulk Payments',
+    'page callback' => 'pond_management_bulk_payments_page',
+    'access arguments' => array('manual payments'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/assess'] = array(
+    'title' => 'Assessments',
+    'page callback' => 'pond_management_assess_page',
+    'access arguments' => array('assess workers'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/checkin'] = array(
+    'title' => 'Check In',
+    'page callback' => 'pond_management_checkin_page',
+    'access arguments' => array('checkin workers'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/training'] = array(
+    'title' => 'Training Attendance',
+    'page callback' => 'pond_management_training_page',
+    'access arguments' => array('assign training'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/hotels'] = array(
+    'title' => 'Manage Hotels',
+    'page callback' => 'pond_management_hotels_page',
+    'access arguments' => array('eck administer building building entities'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/zones'] = array(
+    'title' => 'Manage Zones',
+    'page callback' => 'pond_management_zones_page',
+    'access arguments' => array('eck administer zone zone entities'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/cards'] = array(
+    'title' => 'ID Cards',
+    'page callback' => 'pond_management_cards_page',
+    'access arguments' => array('export id cards'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/export'] = array(
+    'title' => 'Export CSV',
+    'page callback' => 'pond_management_export_page',
+    'access arguments' => array('see all registrations'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/export/finished'] = array(
+    'title' => 'Export Finished',
+    'page callback' => 'pond_management_batch_download_page',
+    'access arguments' => array('access dashboard'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/export/file'] = array(
+    'title' => 'Export Finished',
+    'page callback' => 'pond_management_batch_download_download',
+    'access arguments' => array('access dashboard'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/clear_cache'] = array(
+    'title' => 'Clear Cache',
+    'page callback' => 'pond_management_clear_cache',
+    'access arguments' => array('clear cache'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/manage_user'] = array(
+    'title' => 'Manage User',
+    'page callback' => 'pond_management_manage_user',
+    'access arguments' => array('see all registrations'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/registration/edit'] = array(
+    'title' => 'Edit Application',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_management_edit_registration'),
+    'access arguments' => array('edit users'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/worker/edit'] = array(
+    'title' => 'Edit Assignment',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_management_edit_worker'),
+    'access arguments' => array('edit users'),
+    'type' => MENU_CALLBACK
+  );
+
+  $items['pond/autocomplete/name'] = array(
+    'page callback' => 'pond_management_autocomplete_name',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+
+  $items['admin/config/pond/locations'] = array(
+    'title' => 'Manage Locations',
+    'page callback' => 'pond_management_manage_locations_page',
+    'description' => 'Manage Pond Locations, including Dates, Roles, etc.',
+    'access arguments' => array('administer location'),
+  );
+
+  $items['dash/merge'] = array(
+    'title' => 'Merge Tool',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_management_merge_form'),
+    'access arguments' => array('access dashboard'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/allocate-form'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_management_allocate_form'),
+    'access arguments' => array('allocate workers'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/assess-form'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_management_assess_form'),
+    'access arguments' => array('assess workers'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/international-form'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_management_international_form'),
+    'access arguments' => array('eck administer international_application international_application entities'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/duplicate_regos'] = array(
+    'title' => 'Fix Duplicate Registrations',
+    'page callback' => 'pond_management_duplicate_regos',
+    'access arguments' => array('administer pond settings'),
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+/**
+ * Implement hook_permission
+ */
+function pond_management_permission() {
+  return array(
+    'access dashboard' => array(
+      'title' => t('Access the Management Dashboard'),
+    ),
+    'assign training' => array(
+      'title' => t('Manage Training Attendance'),
+    ),
+    'allocate workers' => array(
+      'title' => t('Allocate Workers'),
+    ),
+    'checkin workers' => array(
+      'title' => t('Checkin Workers'),
+    ),
+    'assess workers' => array(
+      'title' => t('Assess Workers'),
+    ),
+    'all locations' => array(
+      'title' => t('All locations - no restriction'),
+    ),
+    'assign location access' => array(
+      'title' => t('Assign Location Access to Users'),
+    ),
+    'administer location' => array(
+      'title' => t('Administer Location Settings'),
+    ),
+    'clear cache' => array(
+      'title' => t('Clear Cache'),
+    ),
+    'export id cards' => array(
+      'title' => t('Export Id Cards'),
+    ),
+    'see online' => array(
+      'title' => t('See Who\'s Online'),
+    ),
+  );
+}
+
+function pond_management_clear_cache(){
+  cache_clear_all('*', 'cache_pond', TRUE);
+  drupal_goto();
+}
+
+function pond_management_duplicate_regos(){
+  $year = pond_get_year(1);
+  return entity_duplicates_ui_find_type('registrations', 'delete', substr($year, 2, 2));
+}
+
+/**
+ * hook_entity_duplicates_comparator_alter();
+ */
+function pond_management_entity_duplicates_comparator_alter(&$duplicates, $entity_info){
+  if($entity_info['label'] == 'Registrations'){
+    $duplicates = entity_duplicates_find($entity_info['base table'], array($entity_info['entity keys']['label'], 'uid'), $entity_info['entity keys']['id']);
+  }
+}
+
+/**
+ * A page that shows an admin everything about the user, including all registrations in descending date order.
+ */
+function pond_management_manage_user($uid){
+  $return_array = array();
+  $account = user_load($uid);
+  if(empty($account->uid)){
+    drupal_not_found();
+  }
+
+  ##User view
+  $return_array['user'] = array(
+    '#prefix' => '<div class="user-manage-user">',
+    '#suffix' => '</div>',
+  );
+  $return_array['user'][] = user_view($account, 'basic');
+
+  $prefix = pond_regos_get_field_value('user', $account, 'field_prefix_name');
+  $first = pond_regos_get_field_value('user', $account, 'field_first_name');
+  $last = pond_regos_get_field_value('user', $account, 'field_last_name');
+  drupal_set_title($prefix.' '.$first.' '.$last);
+
+  ##Registrations View
+  $years = pond_get_registered_years($uid);
+  if(empty($years)){
+    return $return_array;
+  }
+  rsort($years);
+  foreach($years as $year){
+    $info = pond_get_by_uid($uid, $year);
+    $registration = entity_load_single('registrations', $info['registrations']);
+    $registration_info = entity_get_info('registrations');
+    $worker_info = entity_get_info('worker');
+    $reference_info = entity_get_info('reference');
+    $international_info = entity_get_info('international_application');
+    $assessment_info = entity_get_info('assessment');
+
+    $return_array[$year] = array(
+      '#prefix' => '<div class="user-manage-year"><h2 class="year-title">'.$year.'</h2>',
+      '#suffix' => '</div>',
+    );
+
+    ## Relations
+    $return_array[$year]['primary'] = array(
+      '#prefix' => '<div class="user-manage-block">',
+      '#suffix' => '</div>',
+    );
+    $return_array[$year]['primary']['header'] = array(
+      '#markup' => '<h3>'.t('Main Details').'</h3>',
+    );
+    $return_array[$year]['primary']['content'] = entity_view('registrations', array($registration), 'primary', NULL, TRUE);
+    $return_array[$year]['primary']['edit'] = array(
+      '#markup' => l(
+        t('Edit'),
+        'dash/registration/edit/'.$registration->id,
+        array('query' => drupal_get_destination(), 'attributes' => array('class' => array('button', 'user-manage-block-edit')))),
+    );
+    $return_array[$year]['primary']['delete'] = array(
+      '#markup' => l(
+        t('Delete'),
+        str_replace('%', $registration->id, $registration_info['bundles']['registrations']['crud']['delete']['path']),
+        array('query' => drupal_get_destination(), 'attributes' => array('class' => array('button', 'user-manage-block-delete')))),
+    );
+
+    ## Registration Fields
+    $return_array[$year]['secondary'] = array(
+      '#prefix' => '<div class="user-manage-block">',
+      '#suffix' => '</div>',
+    );
+    $return_array[$year]['secondary']['header'] = array(
+      '#markup' => '<h3>'.t('Application Details').'</h3>',
+    );
+    $return_array[$year]['secondary']['content'] = entity_view('registrations', array($registration), 'secondary', NULL, TRUE);
+    $return_array[$year]['secondary']['edit'] = array(
+      '#markup' => l(
+        t('Edit'),
+        str_replace('%', $registration->id, $registration_info['bundles']['registrations']['crud']['edit']['path']),
+        array('query' => drupal_get_destination(), 'attributes' => array('class' => array('button', 'user-manage-block-edit')))),
+    );
+
+    ## International Application
+    $international = pond_regos_get_field_value('location', $info['location'], 'field_is_international');
+    if($international == 1){
+      $return_array[$year]['international'] = array(
+        '#prefix' => '<div class="user-manage-block">',
+        '#suffix' => '</div>',
+      );
+      $return_array[$year]['international']['header'] = array(
+        '#markup' => '<h3>'.t('International Details').'</h3>',
+      );
+      if(!empty($info['international_application'])){
+        $international = entity_load_single('international_application', $info['international_application']);
+        $return_array[$year]['international']['content'] = entity_view('international_application', array($international), 'full', NULL, TRUE);
+        $return_array[$year]['international']['edit'] = array(
+          '#markup' => l(
+            t('Edit'),
+            str_replace('%', $international->id, $international_info['bundles']['international_application']['crud']['edit']['path']),
+            array('query' => drupal_get_destination(), 'attributes' => array('class' => array('button', 'user-manage-block-edit')))),
+        );
+      } else {
+        $return_array[$year]['international']['content'] = array('#markup' => 'No International Details for '.$year);
+        $return_array[$year]['international']['add'] = array(
+          '#markup' => l(
+            t('Add International Details'),
+            'dash/international-form/'.$uid.'/'.$year,
+            array('query' => drupal_get_destination(), 'attributes' => array('class' => array('button', 'user-manage-block-edit')))),
+        );
+      }
+    }
+
+    ## Worker
+    $return_array[$year]['worker'] = array(
+      '#prefix' => '<div class="user-manage-block">',
+      '#suffix' => '</div>',
+    );
+    $return_array[$year]['worker']['header'] = array(
+      '#markup' => '<h3>'.t('Assignment Details').'</h3>',
+    );
+    if(!empty($info['worker'])){
+      $worker = entity_load_single('worker', $info['worker']);
+      $return_array[$year]['worker']['content'] = entity_view('worker', array($worker), 'full', NULL, TRUE);
+    } else {
+      $return_array[$year]['worker']['content'] = array('#markup' => 'No Assignment');
+    }
+    $return_array[$year]['worker']['edit'] = array(
+      '#markup' => l(
+        t('Edit'),
+        'dash/worker/edit/'.$worker->id,
+        array('query' => drupal_get_destination(), 'attributes' => array('class' => array('button', 'user-manage-block-edit')))),
+    );
+
+    ## Reference
+    $return_array[$year]['reference'] = array(
+      '#prefix' => '<div class="user-manage-block">',
+      '#suffix' => '</div>',
+    );
+    $return_array[$year]['reference']['header'] = array(
+      '#markup' => '<h3>'.t('Reference').'</h3>',
+    );
+    if(!empty($info['reference'])){
+      $reference = entity_load_single('reference', $info['reference']);
+      $return_array[$year]['reference']['content'] = entity_view('reference', array($reference), 'full', NULL, TRUE);
+      $return_array[$year]['reference']['edit'] = array(
+        '#markup' => l(
+          t('Edit'),
+          str_replace('%', $reference->id, $reference_info['bundles']['reference']['crud']['edit']['path']),
+          array('query' => drupal_get_destination(), 'attributes' => array('class' => array('button', 'user-manage-block-edit')))),
+      );
+    } else {
+      $return_array[$year]['reference']['content'] = array('#markup' => 'Reference not yet completed for '.$year);
+      $return_array[$year]['reference']['edit'] = array(
+        '#markup' => l(
+          t('Add a Reference'),
+          'pond/set_year/'.$year,
+          array('query' => array('destination' => 'referee/referee/'.$info['referee']), 'attributes' => array('class' => array('button', 'user-manage-block-edit')))),
+      );
+    }
+
+    ## Assessment
+    $return_array[$year]['assessment'] = array(
+      '#prefix' => '<div class="user-manage-block">',
+      '#suffix' => '</div>',
+      '#access' => user_access('assess workers'),
+    );
+    $return_array[$year]['assessment']['header'] = array(
+      '#markup' => '<h3>'.t('Assessment').'</h3>',
+    );
+    if(!empty($info['assessment'])){
+      $assessment = entity_load_single('assessment', $info['assessment']);
+
+      if(user_access('eck view assessment assessment entities')){
+        $return_array[$year]['assessment']['content'] = entity_view('assessment', array($assessment), 'full', NULL, TRUE);
+        $return_array[$year]['assessment']['edit']['#markup'] = l(
+            t('Edit'),
+            str_replace('%', $assessment->id, $assessment_info['bundles']['assessment']['crud']['edit']['path']),
+            array('query' => drupal_get_destination(), 'attributes' => array('class' => array('button', 'user-manage-block-edit'))));
+      } else {
+        $assessor = pond_regos_get_field_value('assessment', $assessment, 'field_ass_assessor');
+        $return_array[$year]['assessment']['content']['#markup'] = $assessment->year . ' Assessment completed by '.$assessor;
+      }
+    } else {
+      $return_array[$year]['assessment']['content']['#markup'] = 'Assessment not yet completed for '.$year;
+    }
+
+    ## Payments
+    $return_array[$year]['payments'] = array(
+      '#prefix' => '<div class="user-manage-block">',
+      '#suffix' => '</div>',
+    );
+    $return_array[$year]['payments']['header'] = array(
+      '#markup' => '<h3>'.t('Payments').'</h3>',
+    );
+    $return_array[$year]['payments']['content']['#markup'] = theme('pond_payments_user_financials', array('finances' => $info['finances']));
+    $return_array[$year]['payments']['edit'] = array(
+      '#markup' => l(
+        t('Manage Payments'),
+        'dash/financials/'.$uid,
+        array('attributes' => array('class' => array('button', 'user-manage-block-edit')))),
+    );
+
+  }
+
+  return $return_array;
+}
+
+function pond_management_edit_registration($form, &$form_state, $registration_id){
+  $registration = entity_load_single('registrations', $registration_id);
+  if(empty($registration->id)){
+    drupal_not_found();
+  }
+
+  $info = pond_get_by_uid($registration->uid);
+
+  $form['#prefix'] = '<div id="form-replace">';
+  $form['#suffix'] = '</div>';
+
+  ## AJAX fields for selecting location, role and date.
+  $defaults = array(
+    'location' => $info['location'],
+    'role' => $info['volunteer_role'],
+    'dates' => $info['dates'],
+    );
+  pond_regos_application_form_location_container($form, $form_state, $registration->year, $defaults, TRUE);
+
+  //Select a Church
+  $churches = entity_load('church');
+  foreach($churches as $key => $value){
+    $churches_options[$key] = $value->title;
+    if(empty($value->field_active['und'][0]['value'])){
+      $churches_options[$key] .= ' (INACTIVE)';
+    }
+  }
+  asort($churches_options);
+  $form['relations']['rel_church'] = array(
+    '#type' => 'select',
+    '#title' => t('Church you currently attend'),
+    '#options' => $churches_options,
+    '#default_value' => $info['church'],
+  );
+
+
+  //Select a Referee
+  $referees = entity_load('referee');
+  foreach($referees as $key => $value){
+    $referees_options[$key] = $value->title;
+    if(!isset($value->field_referee_status['und'][0]['value']) || $value->field_referee_status['und'][0]['value'] != 'active'){
+      $referees_options[$key] .= ' (INACTIVE)';
+    }
+  }
+  asort($referees_options);
+  $form['relations']['rel_referee'] = array(
+    '#type' => 'select',
+    '#title' => t('Listed Referee'),
+    '#options' => $referees_options,
+    '#default_value' => $info['referee'],
+  );
+
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save Changes'),
+      '#weight' => 1000,
+  );
+
+  return $form;
+}
+
+
+function pond_management_edit_registration_submit($form, &$form_state){
+  $rego = entity_load_single('registrations', $form_state['build_info']['args'][0]);
+
+
+  ##DATES
+  //Doesn't use pond_save_relationship() because we are dealing with arrays - consider improving the function
+  $new_dates = $form_state['values']['dates'];
+  if(is_array($new_dates)){
+    $query = pond_relation_get('registrations', $rego->id, 'has_applied_for_dates');
+    if(is_array($query['has_applied_for_dates'])){
+      foreach($query['has_applied_for_dates'] as $value){
+        if(in_array($value->endpoints['und'][1]['entity_id'], $new_dates)){
+          //If we need to keep it, don't bother deleting and recreating it...
+          unset($new_dates[$value->endpoints['und'][1]['entity_id']]);//unset it so we don't make one, it already exists
+          //debug('Do Nothing with '.$value->endpoints['und'][1]['entity_id']);
+        } else {
+          // Has not been selected in the form, so delete it.
+          //debug('Delete '.$value->endpoints['und'][1]['entity_id']);
+          relation_delete($value->rid);
+        }
+      }
+    }
+    foreach($new_dates as $new_date){
+      // Link Rego to Dates
+      //debug('Create '.$new_date);
+      if(!empty($new_date)){
+        $relation = relation_create('has_applied_for_dates', array(
+            array('entity_type' => 'registrations', 'entity_id' => $rego->id),
+            array('entity_type' => 'night', 'entity_id' => $new_date),
+            ));
+        $rid = relation_save($relation);
+      }
+    }
+  }
+
+  ##Save Relationships
+
+  pond_save_relationship('listed_referee', 'registrations', $rego->id, 'referee', $form_state['values']['rel_referee'], TRUE);
+  pond_save_relationship('goes_to_church', 'registrations', $rego->id, 'church', $form_state['values']['rel_church'], FALSE);
+  pond_save_relationship('has_applied_for_location', 'registrations', $rego->id, 'location', $form_state['values']['location'], FALSE);
+  pond_save_relationship('has_applied_for_role', 'registrations', $rego->id, 'volunteer_role', $form_state['values']['role'], FALSE);
+
+  cache_clear_all('pond:user_info:' . $rego->uid . ':' . $rego->year, 'cache_pond', TRUE);
+}
+
+function pond_management_edit_worker($form, &$form_state, $worker_id){
+  $worker = entity_load_single('worker', $worker_id);
+  if(empty($worker->id)){
+    drupal_not_found();
+  }
+
+  $info = pond_get_by_uid($worker->uid);
+
+  field_attach_form('worker', $worker, $form, $form_state);
+
+  //Zones
+  $zones = entity_load('zone');
+  foreach($zones as $key => $value){
+    $active = pond_regos_get_field_value('zone', $value, 'field_active');
+    if($active){
+      $zones_options[$key] = $value->title;
+    }
+  }
+  asort($zones_options);
+  $zones_options = array(0 => 'No Zone')+(array)$zones_options;
+
+  $form['worker']['rel_zone'] = array(
+    '#type' => 'select',
+    '#title' => t('Assigned Zone'),
+    '#options' => $zones_options,
+    '#default_value' => isset($info['zone'])?$info['zone']:0,
+  );
+
+
+  //Buildings
+  $buildings = entity_load('building');
+  foreach($buildings as $key => $value){
+    $buildings_options[$key] = $value->title;
+  }
+  asort($buildings_options);
+  $buildings_options = array(0 => 'No Building')+(array)$buildings_options;
+
+  $form['worker']['rel_building'] = array(
+    '#type' => 'select',
+    '#title' => t('Assigned Building'),
+    '#options' => $buildings_options,
+    '#multiple' => TRUE,
+    '#default_value' => !empty($info['building'])?$info['building']:array(0),
+  );
+
+  //Team Leader
+  $leader_options = pond_regos_get_team_leaders();
+  asort($leader_options);
+  $leader_options = array(0 => 'No Team Leader')+(array)$leader_options;
+  $form['worker']['rel_leader'] = array(
+    '#type' => 'select',
+    '#title' => t('Assigned Team Leader'),
+    '#options' => $leader_options,
+    '#default_value' => isset($info['leader'])?$info['leader']:0,
+  );
+
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save Changes'),
+      '#weight' => 1000,
+  );
+
+  return $form;
+}
+
+
+function pond_management_edit_worker_submit($form, &$form_state){
+  $worker = entity_load_single('worker', $form_state['build_info']['args'][0]);
+
+
+  ## Save Worker
+  field_attach_form_validate($worker->entityType(), $worker, $form, $form_state);
+  field_attach_submit($worker->entityType(), $worker, $form, $form_state);
+  $worker->save();
+
+  ##BUILDINGS
+  //Doesn't use pond_save_relationship() because we are dealing with arrays - consider improving the function
+  $new_buildings = $form_state['values']['rel_building'];
+  if(isset($new_buildings[0])){ unset($new_buildings[0]); }
+  if(is_array($new_buildings)){
+    $query = pond_relation_get('worker', $worker->id, 'is_assigned_to_building');
+    if(is_array($query['is_assigned_to_building'])){
+      foreach($query['is_assigned_to_building'] as $value){
+        if(in_array($value->endpoints['und'][1]['entity_id'], $new_buildings)){
+          //If we need to keep it, don't bother deleting and recreating it...
+          unset($new_buildings[$value->endpoints['und'][1]['entity_id']]);//unset it so we don't make one, it already exists
+          //debug('Do Nothing with '.$value->endpoints['und'][1]['entity_id']);
+        } else {
+          // Has not been selected in the form, so delete it.
+          //debug('Delete '.$value->endpoints['und'][1]['entity_id']);
+          relation_delete($value->rid);
+        }
+      }
+    }
+    foreach($new_buildings as $new_building){
+      //debug('Create '.$new_building);
+      $relation = relation_create('is_assigned_to_building', array(
+          array('entity_type' => 'worker', 'entity_id' => $worker->id),
+          array('entity_type' => 'building', 'entity_id' => $new_building),
+          ));
+      $rid = relation_save($relation);
+    }
+  }
+
+  ##Save Relationships
+  if(!empty($form_state['values']['rel_zone'])){
+    pond_save_relationship('is_assigned_to_zone', 'worker', $worker->id, 'zone', $form_state['values']['rel_zone'], TRUE);
+  }
+  if(!empty($form_state['values']['rel_leader'])){
+    pond_save_relationship('has_team_leader', 'worker', $worker->id, 'worker', $form_state['values']['rel_leader'], TRUE);
+  }
+
+  cache_clear_all('pond:user_info:' . $worker->uid . ':' . $worker->year, 'cache_pond', TRUE);
+}
+
+
+/**
+ * Autocomplete lookup on name of person that is limited by Pond Year.
+ * Actually searched the title of the registration entity and returns UID
+ */
+function pond_management_autocomplete_name($string = "") {
+  $matches = array();
+  if ($string) {
+    $year = pond_get_year();
+
+    $result = db_select('eck_registrations')
+      ->fields('eck_registrations', array('uid', 'title', 'year'))
+      ->condition('title', '%' . db_like($string) . '%', 'LIKE')
+      ->condition('year', $year)
+      ->range(0, 10)
+      ->execute();
+
+    foreach ($result as $rego) {
+      $matches[$rego->title . " [$rego->uid]"] = check_plain($rego->title);
+    }
+  }
+
+  drupal_json_output($matches);
+}
+
+/**
+ * This function is called from all the dashboard pages to retrieve the location and week from GET
+ * It also checks access to the location and provides default fallback if access is denied.
+ */
+function pond_management_dashboard_retrieve_params($a = FALSE, $b = FALSE, $c = FALSE){
+  $locations = pond_management_get_accessible_locations();
+  if(count($locations) > 1){
+    $loc = 'all';//Default to All Locations
+    $wk = 'all';
+  } else {
+    $loc = key($locations);//Default to first available location
+    $wk = 1;
+  }
+  if(isset($_REQUEST['location']) && array_key_exists($_REQUEST['location'], $locations)){
+    //If this is a real location id, and I'm allowed to access it.
+    $loc = $_REQUEST['location'];
+  } else if(!empty($a) && array_key_exists($a, $locations)) {
+    $loc = $a;
+  }
+
+  if(isset($_REQUEST['week']) && is_numeric($_REQUEST['week'])){
+    $wk = $_REQUEST['week'];
+  } elseif(!empty($b) && is_numeric($b)){
+    $wk = $b;
+  }
+
+  $locs = array();
+  if($loc == 'all'){
+    $locations = pond_management_get_accessible_locations();
+    foreach($locations as $location){
+      $locs[] = $location->id;
+    }
+  } else {
+    $locs[] = $loc;
+  }
+
+  return array('loc' => $loc, 'wk' => $wk, 'locs' => $locs);
+}
+
+/**
+ *  The main dashboard page. It works on the current user and pond year, but accepts a location paramater in GET.
+ */
+function pond_management_dashboard_page(){
+  drupal_set_title('');
+
+  $params = pond_management_dashboard_retrieve_params();
+  extract($params);
+
+  $locations = pond_management_get_accessible_locations();
+
+  ####################### Blocks #######################
+
+  $location_selection = pond_management_location_selection_menu($loc, $wk);
+  $location_information = ($loc == 'all')?'':entity_view('location', array($locations[$loc]), 'full', NULL, TRUE);
+  $count_total = pond_count_regos(array('location' => $locs, 'week' => $wk));
+  $count_check = pond_count_regos(array('location' => $locs, 'week' => $wk, 'status' => array('Applied')));
+  $count_approve = pond_count_regos(array('location' => $locs, 'week' => $wk, 'status' => array('Checked')));
+  $quick_lookup = drupal_get_form('pond_management_quick_lookup_form');
+
+  ####################### Theming ######################
+
+  //TODO: Get all this theme stuff out into a seperate file.
+
+  $return['right_column'] = array(
+    '#prefix' => '<div id="right-column">',
+    '#suffix' => '</div>',
+  );
+
+  ### Quick Lookup Form ###
+  $return['right_column']['quick_lookup'] = array(
+    '#prefix' => '<div class="dash-block quick-lookup">',
+    '#suffix' => '</div>',
+    '#access' => user_access('see all registrations'),
+  );
+  $return['right_column']['quick_lookup']['header'] = array(
+    '#prefix' => '<h3 class="dash-block-header">',
+    '#markup' => t('Quick Lookup'),
+    '#suffix' => '</h3>',
+  );
+  $return['right_column']['quick_lookup']['content'] = array(
+    '#prefix' => '<div class="dash-block-content">',
+    '#suffix' => '</div>',
+  );
+  $return['right_column']['quick_lookup']['content'][] = $quick_lookup;
+
+
+  ### Who's Online ###
+  $return['right_column']['online'] = array(
+    '#prefix' => '<div class="dash-block online">',
+    '#suffix' => '</div>',
+    '#access' => user_access('see online'),
+  );
+  $return['right_column']['online']['header'] = array(
+    '#prefix' => '<h3 class="dash-block-header">',
+    '#markup' => t('Online Now'),
+    '#suffix' => '</h3>',
+  );
+  $return['right_column']['online']['content'] = array(
+    '#prefix' => '<div class="dash-block-content">',
+    '#suffix' => '</div>',
+  );
+  $return['right_column']['online']['content'][] = pond_render_block('user', 'online');
+
+
+
+
+  $return['left_column'] = array(
+    '#prefix' => '<div id="left-column">',
+    '#suffix' => '</div>',
+  );
+
+  ### Location Selection Form ###
+  $return['left_column']['location_selection'] = array(
+    '#prefix' => '<div class="dash-block location-selection">',
+    '#suffix' => '</div>',
+    '#access' => user_access('eck view location location entities'),
+  );
+  $return['left_column']['location_selection']['content'] = array(
+    '#prefix' => '<div class="dash-block-content">',
+    '#suffix' => '</div>',
+  );
+  $return['left_column']['location_selection']['content'][] = $location_selection;
+
+  ### Location Information ###
+  $return['left_column']['location_information'] = array(
+    '#prefix' => '<div class="dash-block location-information">',
+    '#suffix' => '</div>',
+    '#access' => user_access('eck view location location entities'),
+  );
+  $return['left_column']['location_information']['header'] = array(
+    '#prefix' => '<h3 class="dash-block-header">',
+    '#markup' => t('Information'),
+    '#suffix' => '</h3>',
+  );
+  $return['left_column']['location_information']['content'] = array(
+    '#prefix' => '<div class="dash-block-content clearfix">',
+    '#suffix' => '</div>',
+  );
+  $return['left_column']['location_information']['content'][] = $location_information;
+  $return['left_column']['location_information']['content'][] = array(
+    '#markup' => l('Edit Location', 'admin/config/pond/locations/'.$loc, array(
+      'attributes' => array('class' => array('form-submit')))),
+    '#access' => user_access('administer location'));
+
+  ### How to Add ###
+  $return['left_column']['how-to'] = array(
+    '#prefix' => '<div class="dash-block how-to">',
+    '#suffix' => '</div>',
+    '#access' => user_access('eck administer location location entities'),
+  );
+  $return['left_column']['how-to']['header'] = array(
+    '#prefix' => '<h3 class="dash-block-header">',
+    '#markup' => t('How to add a new Schoolies Location.'),
+    '#suffix' => '</h3>',
+  );
+  $return['left_column']['how-to']['content'] = array(
+    '#prefix' => '<div class="dash-block-content">',
+    '#suffix' => '</div>',
+  );
+  $links = array(
+    l('Create the Location', 'admin/structure/entity-type/location/location/add', array('query' => drupal_get_destination())),
+    l('Add it to a Nation', 'admin/structure/entity-type/nation/nation', array('query' => drupal_get_destination())),
+    l('Edit the Details', 'admin/config/pond/locations/all', array('query' => drupal_get_destination())),
+  );
+  $return['left_column']['how-to']['content']['#markup'] = theme('item_list', array('items' => $links, 'title' => '', 'type' => 'ol'));
+
+
+
+
+
+  $return['center_column'] = array(
+    '#prefix' => '<div id="center-column">',
+    '#suffix' => '</div>',
+  );
+
+  ### Application Counts ###
+  $return['center_column']['application_counts'] = array(
+    '#prefix' => '<div class="dash-block application-counts">',
+    '#suffix' => '</div>',
+  );
+
+  $link_title = '<span class="count">'. $count_total . '</span> ' . t('Total');
+  $return['center_column']['application_counts']['total'] = array('#markup' => l($link_title, 'dash/total', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-count-block', 'total')),
+    'html' => TRUE,
+    )),
+    '#access' => user_access('see all registrations'),
+  );
+
+  $link_title = '<span class="count">'. $count_check . '</span> ' . t('Check');
+  $return['center_column']['application_counts']['check'] = array('#markup' => l($link_title, 'dash/check', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-count-block', 'check')),
+    'html' => TRUE,
+    )),
+    '#access' => user_access('check registrations'),
+  );
+
+  $link_title = '<span class="count">'. $count_approve . '</span> ' . t('Approve');
+  $return['center_column']['application_counts']['approve'] = array('#markup' => l($link_title, 'dash/approve', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-count-block', 'approve')),
+    'html' => TRUE,
+    )),
+    '#access' => user_access('approve registrations'),
+  );
+
+
+  ### Buttons ###
+  $return['center_column']['buttons'] = array(
+    '#prefix' => '<div class="dash-block buttons">',
+    '#suffix' => '</div>',
+  );
+
+  $return['center_column']['buttons']['allocate'] = array('#markup' => l('Allocations', 'dash/allocate', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-button', 'allocate'))
+    )),
+    '#access' => user_access('allocate workers'),
+  );
+
+  $return['center_column']['buttons']['checkin'] = array('#markup' => l('Check In', 'dash/checkin', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-button', 'checkin'))
+    )),
+    '#access' => user_access('checkin workers'),
+  );
+
+  $return['center_column']['buttons']['training_locations'] = array('#markup' => l('Training Locations', 'dash/training-locations', array(
+    'attributes' => array('class' => array('dash-button', 'training-locations'))
+    )),
+    '#access' => user_access('eck administer training_event training_event entities'),
+  );
+
+  $return['center_column']['buttons']['training'] = array('#markup' => l('Training Attendance', 'dash/training', array(
+    'attributes' => array('class' => array('dash-button', 'training'))
+    )),
+    '#access' => user_access('assign training'),
+  );
+
+  $return['center_column']['buttons']['nations'] = array('#markup' => l('Manage Nations', 'admin/structure/entity-type/nation/nation', array(
+    'attributes' => array('class' => array('dash-button', 'nations'))
+    )),
+    '#access' => user_access('eck administer nation nation entities'),
+  );
+
+  $return['center_column']['buttons']['transfer'] = array('#markup' => l('Receive EFT', 'dash/receive_eft', array(
+    'attributes' => array('class' => array('dash-button', 'transfer'))
+    )),
+    '#access' => user_access('manual payments'),
+  );
+
+  $return['center_column']['buttons']['churches'] = array('#markup' => l('Manage Churches', 'churches', array(
+    'attributes' => array('class' => array('dash-button', 'churches'))
+    )),
+    '#access' => user_access('eck administer church church entities'),
+  );
+
+  $return['center_column']['buttons']['referees'] = array('#markup' => l('Manage Referees', 'referees', array(
+    'attributes' => array('class' => array('dash-button', 'referees'))
+    )),
+    '#access' => user_access('eck administer referee referee entities'),
+  );
+
+  $return['center_column']['buttons']['hotels'] = array('#markup' => l('Manage Hotels', 'dash/hotels', array(
+    'attributes' => array('class' => array('dash-button', 'hotels'))
+    )),
+    '#access' => user_access('eck administer building building entities'),
+  );
+
+  $return['center_column']['buttons']['zones'] = array('#markup' => l('Manage Zones', 'dash/zones', array(
+    'attributes' => array('class' => array('dash-button', 'zones'))
+    )),
+    '#access' => user_access('eck administer zone zone entities'),
+  );
+
+  $return['center_column']['buttons']['export'] = array('#markup' => l('Export CSV', 'dash/export', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-button', 'export'))
+    )),
+    '#access' => user_access('see all registrations'),
+  );
+
+  $return['center_column']['buttons']['cards'] = array('#markup' => l('ID Cards', 'dash/cards', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-button', 'cards'))
+    )),
+    '#access' => user_access('export id cards'),
+  );
+
+  $return['center_column']['buttons']['cache'] = array('#markup' => l('Clear Cache', 'dash/clear_cache', array(
+    'attributes' => array('class' => array('dash-button', 'cache'))
+    )),
+    '#access' => user_access('clear cache'),
+  );
+
+  $return['center_column']['buttons']['settings'] = array('#markup' => l('Admin Settings', 'admin/config/pond/settings', array(
+    'attributes' => array('class' => array('dash-button', 'settings'))
+    )),
+    '#access' => user_access('administer pond settings'),
+  );
+
+  $return['center_column']['buttons']['assess'] = array('#markup' => l('Assessments', 'dash/assess', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-button', 'assess'))
+    )),
+    '#access' => user_access('assess workers'),
+  );
+
+  $return['center_column']['buttons']['bulk_payments'] = array('#markup' => l('Bulk Payments', 'dash/bulk-payments', array(
+    'query' => array('location' => $loc, 'week' => $wk),
+    'attributes' => array('class' => array('dash-button', 'bulk-payments'))
+    )),
+    '#access' => user_access('manual payments'),
+  );
+
+  $return['center_column']['buttons']['duplicate_regos'] = array('#markup' => l('Fix Duplicate Regos', 'dash/duplicate_regos', array(
+    'attributes' => array('class' => array('dash-button', 'duplicate-regos'))
+    )),
+    '#access' => user_access('administer pond settings'),
+  );
+
+  return $return;
+}
+
+
+function pond_management_total_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $year = pond_get_year();
+  $view = views_get_view('applications');
+  $view->override_path = 'dash/total';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs), $wk, $year));
+  return $viewsoutput;
+}
+
+function pond_management_check_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $year = pond_get_year();
+  $view = views_get_view('pastoral_checks');
+  $view->override_path = 'dash/check';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs), $wk, $year));
+  return $viewsoutput;
+}
+
+function pond_management_approve_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $year = pond_get_year();
+  $view = views_get_view('approvals');
+  $view->override_path = 'dash/approve';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs), $wk, $year));
+  return $viewsoutput;
+}
+
+function pond_management_allocate_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $year = pond_get_year();
+  $view = views_get_view('allocations');
+  $view->override_path = 'dash/allocate';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs), $wk, $year));
+  return $viewsoutput;
+}
+
+function pond_management_bulk_payments_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $year = pond_get_year();
+  $view = views_get_view('bulk_payments');
+  $view->override_path = 'dash/bulk-payments';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs), $wk, $year));
+  return $viewsoutput;
+}
+
+function pond_management_assess_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $year = pond_get_year();
+  $view = views_get_view('assessments');
+  $view->override_path = 'dash/assess';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs), $wk, $year));
+  return $viewsoutput;
+}
+
+function pond_management_checkin_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $year = pond_get_year();
+  $view = views_get_view('checkins');
+  $view->override_path = 'dash/checkin';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs), $wk, $year));
+  return $viewsoutput;
+}
+
+function pond_management_training_page(){
+  $year = pond_get_year();
+  $view = views_get_view('training_attendance');
+  $view->override_path = 'dash/training';
+  $viewsoutput = $view->preview('default', array($year));
+  return $viewsoutput;
+}
+
+function pond_management_export_page(){
+  $params = pond_management_dashboard_retrieve_params();
+  extract($params);
+  $year = pond_get_year();
+  return pond_management_export_csv_batch($locs, $wk, $year);
+}
+
+function pond_management_cards_page($type = ''){
+  $params = pond_management_dashboard_retrieve_params();
+  extract($params);
+  $year = pond_get_year();
+  if(empty($type)){
+    //return 'Two Links';
+    return theme('item_list', array('items' => array(
+      l('Download CSV', 'dash/cards/csv', array('query' => array('location' => $loc, 'week' => $wk))),
+      l('Download ZIP', 'dash/cards/zip', array('query' => array('location' => $loc, 'week' => $wk))),
+      l('Download ZIP (Original Image Sizes)', 'dash/cards/zip_original', array('query' => array('location' => $loc, 'week' => $wk))),
+      ), 'title' => '', 'type' => 'ul'));
+  //Output two links. One to /csv. One to /zip.
+  } else {
+    return pond_management_cards_export_batch($locs, $wk, $year, $type);
+    //return '';
+  }
+}
+
+function pond_management_hotels_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $view = views_get_view('buildings');
+  $view->override_path = 'dash/hotels';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs)));
+  return $viewsoutput;
+}
+
+function pond_management_zones_page($a = FALSE, $b = FALSE, $c = FALSE){
+  $params = pond_management_dashboard_retrieve_params($a, $b, $c);
+  extract($params);
+  $view = views_get_view('zones');
+  $view->override_path = 'dash/zones';
+  $viewsoutput = $view->preview('default', array(implode('+', $locs)));
+  return $viewsoutput;
+}
+
+function pond_management_location_selection_menu($default_location_id, $default_week=1){
+  $accessible = pond_management_get_accessible_locations(1);
+  $active = pond_regos_get_active_locations();
+
+  $locations = array();
+  foreach($accessible as $key => $title){
+    $locations[$key] = (isset($active['locations'][$key])) ? $title : $title .' [Inactive]';
+  }
+  if(empty($locations)){
+    drupal_access_denied();
+    exit();
+  }
+  $locations = pond_management_split_locations_weeks($locations);
+  $locations = array('all.all' => 'All Locations') + (array)$locations;
+
+
+  //Default output if only allowed to access a single location.
+  $output = t('Location: ').$locations[$default_location_id.'.'.$default_week];
+
+  if(module_exists('ctools') && count($locations) > 2){
+    ctools_include('jump-menu');
+    foreach($locations as $location_id => $location_title){
+      $location_id = explode('.', $location_id);
+      $url = url('dash', array('query' => array('location' => $location_id[0], 'week' => $location_id[1])));
+      $targets[$url] = $location_title;
+    }
+    $options = array('default_value' => array_search($locations[$default_location_id.'.'.$default_week], $targets), 'hide' => TRUE);
+    $output = drupal_get_form('ctools_jump_menu', $targets, $options);
+  }
+  return $output;
+}
+
+function pond_management_quick_lookup_form($form, &$form_state){
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Name'),
+    '#autocomplete_path' => 'pond/autocomplete/name',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Lookup',
+  );
+  return $form;
+}
+
+function pond_management_quick_lookup_form_validate($form, &$form_state) {
+  $title = $form_state['values']['name'];
+  $matches = array();
+  $nid = 0;
+  $year = pond_get_year();
+
+  // This preg_match() looks for the last pattern like [33334] and if found extracts the numeric portion.
+  $result = preg_match('/\[([0-9]+)\]$/', $title, $matches);
+  if ($result > 0) {
+    // If $result is nonzero, we found a match and can use it as the index into $matches.
+    $uid = $matches[$result];
+    // Verify that it's a valid nid.
+    $user = user_load($uid);
+    if (empty($user)) {
+      form_error($form['name'], t('Sorry, this user can\'t be found'));
+      return;
+    }
+  }
+  // BUT: Not everybody will have javascript turned on, or they might hit ESC and not use the autocomplete values
+  // offered. In that case, we can attempt to come up with a useful value. This is not absolutely necessary,
+  // and we *could* just emit a form_error() as below.
+  else {
+    $uid = db_select('eck_registrations')
+      ->fields('eck_registrations', array('uid'))
+      ->condition('title', '%' . db_like($string) . '%', 'LIKE')
+      ->condition('year', $year)
+      ->range(0, 1)
+      ->execute()
+      ->fetchField();
+  }
+
+  // Now, if we somehow found a nid, assign it to the node. If we failed, emit an error.
+  if (!empty($uid)) {
+    $form_state['values']['name'] = $uid;
+  }
+  else {
+    form_error($form['name'], t('Sorry, this user can\'t be found'));
+  }
+}
+function pond_management_quick_lookup_form_submit($form, &$form_state) {
+  drupal_goto('dash/manage_user/'.$form_state['values']['name']);//'name' is now a uid
+}
+
+/**
+ * Implement hook_form_alter()
+ */
+function pond_management_form_alter(&$form, &$form_state, $form_id){
+  switch($form_id)
+  {
+    case 'eck__entity__form_add_referee_referee':
+      $form['#prefix'] = '<div id="form-replace">';
+      $form['#suffix'] = '</div>';
+
+      $church_selected = isset($form_state['values']['church']) ? $form_state['values']['church'] : '';
+      $selected_church = pond_regos_autocomplete_interpret($church_selected);
+
+      $form['church'] = array(
+          '#type' => 'textfield',
+          '#title' => t('Church this referee attends.'),
+          '#description' => t('Begin typing the name of the church, and then select it from the list that appears.'),
+          '#default_value' => $church_selected,
+          '#autocomplete_path' => 'pond/autocomplete/church',
+          '#ajax' => array(
+            'callback' => 'pond_regos_callback',
+            'wrapper' => 'form-replace',
+          ),
+          '#weight' => 91,
+      );
+
+      if(!empty($selected_church)){
+        $form['church_info'] = array(
+            '#type' => 'item',
+            '#title' => $selected_church->title,
+            '#markup' => pond_format_address('church', $selected_church),
+            '#weight' => 92,
+        );
+      }
+
+      $form['#submit'][] = 'pond_management_referee_submit';
+
+    break;
+    case 'eck__entity__form_edit_referee_referee':
+      $form['#prefix'] = '<div id="form-replace">';
+      $form['#suffix'] = '</div>';
+
+      $referee = $form['#entity'];
+      $related_entities = entity_duplicates_find_related_entities('referee', $referee->id);
+      if(!empty($related_entities)){
+        $registrations = array();
+        $church = array();
+        foreach($related_entities as $related_entity){
+          //Note the variable variable
+          ${$related_entity->type}[$related_entity->id] = $related_entity->title;
+        }
+      }
+
+      if(empty($registrations)){
+        $linked = '0 registrations.';
+      } else {
+        $linked = count($registrations).' registrations: ' . implode(', ', $registrations);
+      }
+      $form['registrations'] = array(
+        '#type' => 'item',
+        '#title' => t('Linked Registrations'),
+        '#markup' => $linked,
+        '#weight' => -99,
+        '#description' => t('To delete this referee and reassign all registrations to another referee, use the ') . l(t('Merge Tool'), 'dash/merge/referee', array('query' => array('from' => $referee->id))) . '.',
+      );
+
+      if(empty($church)){
+        $linked = 'No Linked Church.';
+      } elseif(count($church) > 1) {
+        $linked = count($church).' churches: ' . implode(', ', $church);
+      } else {
+        $linked = reset($church);
+      }
+      $form['selected_church_info'] = array(
+          '#type' => 'item',
+          '#title' => t('Currently Linked to Church:'),
+          '#markup' => $linked,
+          '#weight' => 90,
+      );
+
+      $church_selected = isset($form_state['values']['church']) ? $form_state['values']['church'] : '';
+      $selected_church = pond_regos_autocomplete_interpret($church_selected);
+
+      $form['church'] = array(
+          '#type' => 'textfield',
+          '#title' => t('Church this referee attends.'),
+          '#description' => t('Begin typing the name of the church, and then select it from the list that appears.'),
+          '#default_value' => $church_selected,
+          '#autocomplete_path' => 'pond/autocomplete/church',
+          '#ajax' => array(
+            'callback' => 'pond_regos_callback',
+            'wrapper' => 'form-replace',
+          ),
+          '#weight' => 91,
+      );
+
+      if(!empty($selected_church)){
+        $form['church_info'] = array(
+            '#type' => 'item',
+            '#title' => $selected_church->title,
+            '#markup' => pond_format_address('church', $selected_church),
+            '#weight' => 92,
+        );
+      }
+
+      $form['#submit'][] = 'pond_management_referee_submit';
+
+    break;
+    case 'user_profile_form':
+      global $user;
+      $account = $form['#user'];
+      $lang = 'und';//ToDo: und
+      if($user->uid != $account->uid)
+      {//I'm not editing myself
+        $locations = pond_management_get_accessible_locations();
+        foreach($locations as $location)
+        {
+          $location_options[$location->id] = $location->title;
+        }
+        asort($location_options);
+        $default_locations = array();
+        $relation = pond_relation_get('user', $account->uid, 'can_manage_location');
+        if(!empty($relation['can_manage_location'])){
+          foreach($relation['can_manage_location'][0]->endpoints[$lang] as $endpoint){
+            if($endpoint['entity_type'] == 'location'){
+              $default_locations[$endpoint['entity_id']] = $endpoint['entity_id'];
+            }
+          }
+        }
+        $form['account']['locations'] = array(
+          '#type' => 'select',
+          '#multiple' => TRUE,
+          '#size' => 10,
+          '#title' => 'Location Access Permissions',
+          '#options' => $location_options,
+          '#default_value' => $default_locations,
+          '#access' => user_access('assign location access'),
+        );
+        $form['#submit'][] = 'pond_management_location_field_submit';
+      }
+    break;
+  }
+}
+
+function pond_management_referee_submit(&$form, &$form_state){
+  $referee = $form['#entity'];
+  $selected_church = pond_regos_autocomplete_interpret($form_state['values']['church']);
+  if(!empty($selected_church)){
+    pond_save_relationship('goes_to_church', 'referee', $referee->id, 'church', $selected_church->id);
+  }
+}
+
+function pond_management_location_field_submit(&$form, &$form_state){
+  $lang = 'und';//todo:und
+  $account = $form['#user'];
+
+  $endpoints = array(array('entity_type' => 'user', 'entity_id' => $account->uid, 'r_index' => $i=0));
+  foreach($form_state['values']['locations'] as $location_id)
+  {
+    $i++;
+    $endpoints[] = array('entity_type' => 'location', 'entity_id' => $location_id, 'r_index' => $i);
+  }
+
+  $relations = pond_relation_get('user', $account->uid, 'can_manage_location');
+  if(!empty($relations))
+  {
+    foreach($relations['can_manage_location'] as $relation)
+    {
+      $comparison_endpoints = $relation->endpoints[$lang];
+      if($endpoints != $comparison_endpoints){
+        relation_delete($relation->rid);
+      } else {
+        return;
+      }
+    }
+  }
+
+  $relation = relation_create('can_manage_location', $endpoints);
+  relation_save($relation, $account);
+}
+
+function pond_management_get_accessible_locations($titles_only = FALSE){
+  global $user;
+  $lang = 'und';//todo:und
+  $locations = &drupal_static('all_locations');//Like a cache that only lasts for the page call.
+  if (!isset($locations)) {
+    $locations = entity_load('location');
+  }
+  if(!user_access('all locations'))
+  {
+    $relation = pond_relation_get('user', $user->uid, 'can_manage_location');
+    $safe_locations = array();
+    if(!empty($relation['can_manage_location'])){
+      foreach($relation['can_manage_location'][0]->endpoints[$lang] as $endpoint){
+        if($endpoint['entity_type'] == 'location'){
+          $safe_locations[$endpoint['entity_id']] = $locations[$endpoint['entity_id']];
+        }
+      }
+    }
+    $locations = $safe_locations;
+  }
+  if(!$titles_only){
+    return $locations;
+  }
+  $location_titles = array();
+  foreach($locations as $location){
+    $location_titles[$location->id] = $location->title;
+  }
+  asort($location_titles);
+  return $location_titles;
+}
+
+/**
+ * Accepts an array of locations with id as key and title as value
+ * Returns a sorted array with keys of "id.week" (e.g. "4.2") and week appended to the title where necessary.
+ */
+function pond_management_split_locations_weeks($locations){
+  $return_locations = array();
+  $active_locations = pond_regos_get_active_locations();
+  foreach($active_locations['locations'] as $location_id => $location){
+    if(array_key_exists($location_id, $locations)){
+      foreach($location['dates'] as $date){
+        if($date['week'] > 1){//This should keep working if there was ever a week 3.
+          $return_locations[$location_id .'.'. $date['week']] = $locations[$location_id].' Week '.$date['week'];
+          //The line below could be removed if we don't want to rename week ones.
+          $return_locations[$location_id .'.1'] = $locations[$location_id].' Week 1';
+        }
+      }
+    }
+  }
+  foreach($locations as $location_id => $location){
+    //They might not be active. We still want them.
+    if(!isset($return_locations[$location_id .'.1'])){
+      $return_locations[$location_id .'.1'] = $locations[$location_id];
+    }
+  }
+  asort($return_locations);
+  return $return_locations;
+}
+
+//give it either a single location id, or an array of them!
+function pond_management_access_check_location($location_ids){
+  $location_ids = (array)$location_ids;
+  if(!user_access('all locations'))
+  {
+    $safe_locations = pond_management_get_accessible_locations();
+    foreach($location_ids as $location_id)
+    {
+      if(!array_key_exists($location_id, $safe_locations))
+      {
+        return FALSE;
+      }
+    }
+  }
+  return TRUE;
+}
+
+
+function pond_management_manage_locations_page($location_id = 0){
+  if(is_numeric($location_id)){
+    $location = entity_load_single('location', $location_id);
+  }
+  if(empty($location) || !pond_management_access_check_location($location->id)){
+    $entities = pond_management_get_accessible_locations();
+    foreach($entities as $entity){
+      $links[] = l($entity->title, 'admin/config/pond/locations/'.$entity->id);
+    }
+    return theme('item_list', array(
+      'items' => $links,
+      'title' => '',
+      'type' => 'ul',
+      'attributes' => array()
+      ));
+  }
+  return drupal_get_form('pond_management_manage_locations_form', $location);
+}
+
+
+function pond_management_manage_locations_form($form, &$form_state, $location){
+
+  $year = pond_get_year();
+  drupal_set_title('Manage '.$location->title.' '.$year);
+  $currency = pond_nations_get_location_currency($location->id);
+  $week_options = array(1 => 'Week 1', 2 => 'Week 2');
+  $block_options = array('Full Time', 'Block A', 'Block B');
+  $roles = entity_load('volunteer_role');
+  foreach($roles as $role){
+    $role_options[$role->id] = $role->title;
+  }
+
+  $form['location_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Settings for '.$location->title.' - All Years',
+    '#tree' => TRUE,
+    '#parents' => array('location_settings'),
+  );
+  field_attach_form('location', $location, $form['location_settings'], $form_state);
+  foreach($week_options as $week => $week_label){
+
+    $form[$week] = array(
+      '#type' => 'fieldset',
+      '#title' => $week_label.' '.$year,
+      '#tree' => TRUE,
+      '#parents' => array($week),
+    );
+
+    foreach($block_options as $block_delta => $block){
+      $form[$week][$block_delta] = array(
+        '#type' => 'fieldset',
+        '#title' => $block,
+        '#tree' => TRUE,
+        '#parents' => array($week, $block_delta),
+      );
+
+      $block_entity = pond_get_block($location->id, $week, $block);
+      field_attach_form('night', $block_entity, $form[$week][$block_delta], $form_state);
+      $form_state['storage']['weeks'][$week][$block_delta]['block_entity_id'] = isset($block_entity->id)?$block_entity->id:0;
+
+      $block_relation = pond_get_block($location->id, $week, $block, TRUE);
+      field_attach_form('relation', $block_relation, $form[$week][$block_delta], $form_state);
+      $form_state['storage']['weeks'][$week][$block_delta]['block_relation_id'] = isset($block_relation->rid)?$block_relation->rid:0;
+
+      ## Legacy
+      $form[$week][$block_delta]['field_year']['#access'] = FALSE;
+      $form[$week][$block_delta]['field_block_nights']['#access'] = FALSE;
+
+      ## We don't need these here, they are implied
+      $form[$week][$block_delta]['field_block_type']['#access'] = FALSE;
+      $form[$week][$block_delta]['field_block_week']['#access'] = FALSE;
+      $form[$week][$block_delta]['endpoints']['#access'] = FALSE;
+
+      ## Rearranging
+      $form[$week][$block_delta]['field_active']['#weight'] = -99;
+      $form[$week][$block_delta]['field_regos_cutoff']['und'][0]['value']['#description'] = 'For '.$week_label.' '.$block.' - '.$location->title.' '.$year;
+
+      ##Currency
+      $form[$week][$block_delta]['field_price_early_accom']['und'][0]['value']['#field_prefix'] = $currency->sign;
+      $form[$week][$block_delta]['field_price_early_rego']['und'][0]['value']['#field_prefix'] = $currency->sign;
+      $form[$week][$block_delta]['field_price_normal_accom']['und'][0]['value']['#field_prefix'] = $currency->sign;
+      $form[$week][$block_delta]['field_price_normal_rego']['und'][0]['value']['#field_prefix'] = $currency->sign;
+      $form[$week][$block_delta]['field_dietary_discount']['und'][0]['value']['#field_prefix'] = $currency->sign;
+
+
+      $form[$week][$block_delta]['roles'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Roles'),
+        '#tree' => TRUE,
+        '#weight' => 99,
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#attributes' => array('class' => array('roles-wrapper')),
+        '#parents' => array($week, $block_delta, 'roles'),
+      );
+      $role_relations_options = array();
+      if(!empty($block_relation->rid)){
+        $role_relations = pond_relation_get('relation', $block_relation->rid, 'has_allowed_role');
+        if(is_array($role_relations['has_allowed_role'])){
+          foreach($role_relations['has_allowed_role'] as $role_relation){
+            $role_relations_options[$role_relation->endpoints['und'][1]['entity_id']] = $role_relation;
+          }
+        }
+      }
+      foreach ($role_options as $role_id => $role_label) {
+        $form[$week][$block_delta]['roles'][$role_id] = array(
+          '#type' => 'fieldset',
+          '#title' => $role_label,
+          '#tree' => TRUE,
+          '#parents' => array($week, $block_delta, 'roles', $role_id),
+        );
+        if(isset($role_relations_options[$role_id])){
+          field_attach_form('relation', $role_relations_options[$role_id], $form[$week][$block_delta]['roles'][$role_id], $form_state);
+          $form_state['storage']['weeks'][$week][$block_delta]['roles'][$role_id]['role_relation_id'] = $role_relations_options[$role_id]->rid;
+        } else {
+          $skeleton = relation_create('has_allowed_role', array(
+            array('entity_type' => 'relation', 'entity_id' => 0),
+            array('entity_type' => 'volunteer_role', 'entity_id' => 0),
+          ));
+          unset($skeleton->endpoints);
+          field_attach_form('relation', $skeleton, $form[$week][$block_delta]['roles'][$role_id], $form_state);
+          $form_state['storage']['weeks'][$week][$block_delta]['roles'][$role_id]['role_relation_id'] = 0;
+          $form[$week][$block_delta]['roles'][$role_id]['field_active']['und']['#default_value'] = 0;
+        }
+        $form[$week][$block_delta]['roles'][$role_id]['endpoints']['#access'] = FALSE;
+        $form[$week][$block_delta]['roles'][$role_id]['field_active']['#weight'] = -99;
+        $form[$week][$block_delta]['roles'][$role_id]['field_regos_cutoff']['und'][0]['value']['#description'] = 'For '.$role_label.' - '.$week_label.' '.$block.' - '.$location->title.' '.$year;
+      }
+    }
+  }
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+    //'#submit' => array('pond_management_manage_locations_form_submit'),
+    );
+
+  return $form;
+
+}
+
+function pond_management_manage_locations_form_validate($form, &$form_state){
+  $lang = 'und';//ToDo: Improve this.
+  if(!empty($form_state['build_info']['args'][0]->id)){
+    $location = entity_load_single('location', $form_state['build_info']['args'][0]->id);
+    field_attach_form_validate('location', $location, $form['location_settings'], $form_state);
+  } else {
+    form_set_error('', 'No location specified.');
+  }
+
+
+  foreach($form_state['storage']['weeks'] as $week_delta => $blocks){
+    foreach($blocks as $block_delta => $block_info){
+
+      if($form_state['values'][$week_delta][$block_delta]['field_active'][$lang][0]['value'] == 1)
+      {
+        if(empty($form_state['values'][$week_delta][$block_delta]['field_dates'][$lang][0]['value']) || empty($form_state['values'][$week_delta][$block_delta]['field_dates'][$lang][0]['value2']))
+        {
+          form_set_error($week_delta.']['.$block_delta.'][field_dates', 'You haven\'t set any dates for this block.');
+        }
+      }
+
+      /*
+      //Todo: All the field_attach_form_validate
+
+      field_attach_form_validate('night', $block_entity, $form[$week_delta][$block_delta], $form_state);
+
+      $block_relation_entity = entity_load_single('relation', $block_info['block_relation_id']);
+      field_attach_form_validate('relation', $block_relation_entity, $form[$week_delta][$block_delta], $form_state);
+
+      foreach($block_info['roles'] as $role_id => $role_info){
+        $role_relation_entity = entity_load_single('relation', $role_info['role_relation_id']);
+        if(empty($role_relation_entity)){
+          //$role_relation_skeleton =
+        }
+        //field_attach_form_validate('relation', $role_relation_entity, $form[$week_delta][$block_delta]['roles'][$role_id], $form_state);
+      }
+      */
+    }
+  }
+}
+
+function pond_management_manage_locations_form_submit($form, &$form_state){
+
+  $lang = 'und';//Todo: Do this properly
+  $year = pond_get_year();
+  $block_options = array('Full Time', 'Block A', 'Block B');
+  $relation_deleted = FALSE;
+
+  $location = entity_load_single('location', $form_state['build_info']['args'][0]->id);
+  field_attach_submit($location->entityType(), $location, $form['location_settings'], $form_state);
+  $location->save();
+
+  foreach($form_state['storage']['weeks'] as $week_delta => $blocks){
+    foreach($blocks as $block_delta => $block_info){
+
+      if(!empty($block_info['block_entity_id']))
+      {//Is an existing block
+
+        $current_block = entity_load_single('night', $block_info['block_entity_id']);
+        if($current_block->field_dates[$lang][0]['value'] != $form_state['values'][$week_delta][$block_delta]['field_dates'][$lang][0]['value'] ||
+          $current_block->field_dates[$lang][0]['value2'] != $form_state['values'][$week_delta][$block_delta]['field_dates'][$lang][0]['value2'])
+        {
+          //Dates have changed
+          $existing_block = pond_get_block_by_dates($form_state['values'][$week_delta][$block_delta]['field_dates'][$lang][0]['value'], $form_state['values'][$week_delta][$block_delta]['field_dates'][$lang][0]['value2'], $week_delta, $block_options[$block_delta]);
+          if(!empty($existing_block)){
+            //A block exists that is identical to what we want, so link to it
+            $block = $existing_block;
+            pond_delete_block_relations($location->id, $week_delta, $block_options[$block_delta]);
+            //relation_delete($block_info['block_relation_id']);
+            $relation_deleted = TRUE;
+            $block_relation_entity = relation_create('allows_bookings_for', array(
+                array('entity_type' => 'location', 'entity_id' => $location->id),
+                array('entity_type' => 'night', 'entity_id' => $block->id)));
+            //relation_save($block_relation_entity);
+          } else {
+            //A block doesn't exist yet, so make one.
+            $block = entity_create('night', array('type' => 'block'));
+            $block->year = $year;
+            $block->field_block_week[$lang][0]['value'] = $week_delta;
+            $block->field_block_type[$lang][0]['value'] = $block_options[$block_delta];
+            $block->save();
+            pond_delete_block_relations($location->id, $week_delta, $block_options[$block_delta]);
+            $relation_deleted = TRUE;
+            $block_relation_entity = relation_create('allows_bookings_for', array(
+                array('entity_type' => 'location', 'entity_id' => $location->id),
+                array('entity_type' => 'night', 'entity_id' => $block->id)));
+            //relation_save($block_relation_entity);
+          }
+        } else {
+          $block = $current_block;
+          $block_relation_entity = entity_load_single('relation', $block_info['block_relation_id']);
+        }
+
+        field_attach_submit('night', $block, $form[$week_delta][$block_delta], $form_state);
+        $block->save();
+
+        unset($form_state['values'][$week_delta][$block_delta]['endpoints']);
+        field_attach_submit('relation', $block_relation_entity, $form[$week_delta][$block_delta], $form_state);
+        relation_save($block_relation_entity);
+      }
+      else
+      {
+        //There is no existing block, I need to make one
+        if($form_state['values'][$week_delta][$block_delta]['field_active'][$lang][0]['value'] == 1){
+          //A new block should only be created if it has been set to active...
+          $block = pond_get_block_by_dates($form_state['values'][$week_delta][$block_delta]['field_dates'][$lang][0]['value'], $form_state['values'][$week_delta][$block_delta]['field_dates'][$lang][0]['value2'], $week_delta, $block_options[$block_delta]);
+          if(!$block)
+          {
+            $block = entity_create('night', array('type' => 'block'));
+          }
+          field_attach_submit('night', $block, $form[$week_delta][$block_delta], $form_state);
+          $block->year = $year;
+          $block->field_block_week[$lang][0]['value'] = $week_delta;
+          $block->field_block_type[$lang][0]['value'] = $block_options[$block_delta];
+          $block->save();
+          //Should we check for existing relationship? I don't think there can be one...
+          $block_relation_entity = relation_create('allows_bookings_for', array(
+              array('entity_type' => 'location', 'entity_id' => $location->id),
+              array('entity_type' => 'night', 'entity_id' => $block->id)));
+          field_attach_submit('relation', $block_relation_entity, $form[$week_delta][$block_delta], $form_state);
+          relation_save($block_relation_entity);
+        }
+      }
+
+      foreach($block_info['roles'] as $role_id => $role_info){
+        unset($role_relation_entity);
+        if(!empty($role_info['role_relation_id'])){
+          $role_relation_entity = entity_load_single('relation', $role_info['role_relation_id']);
+        }
+
+        if(isset($role_relation_entity) && !empty($role_relation_entity) && !$relation_deleted)
+        {
+          field_attach_submit('relation', $role_relation_entity, $form[$week_delta][$block_delta]['roles'][$role_id], $form_state);
+          relation_save($role_relation_entity);
+        }
+        else
+        {
+          //There isn't an existing role_relation, or it has been deleted. We need to make one.
+          if($form_state['values'][$week_delta][$block_delta]['roles'][$role_id]['field_active'][$lang][0]['value'] == 1)
+          {
+            //The role has been marked as active
+            $role_relation_entity = relation_create('has_allowed_role', array(
+                array('entity_type' => 'relation', 'entity_id' => $block_relation_entity->rid),
+                array('entity_type' => 'volunteer_role', 'entity_id' => $role_id)));
+            unset($form_state['values'][$week_delta][$block_delta]['roles'][$role_id]['endpoints']);
+            field_attach_submit('relation', $role_relation_entity, $form[$week_delta][$block_delta]['roles'][$role_id], $form_state);
+            relation_save($role_relation_entity);
+          }
+        }
+      }
+    }
+  }
+  cache_clear_all('pond:active_locations:' . $year, 'cache_pond');
+  cache_clear_all('pond:open_years', 'cache_pond');
+}
+
+
+function pond_management_export_uids_query($locations, $week, $year, $limit, $offset){
+  ##Primary Query
+  $query = db_select('eck_registrations', 'reg');
+  $query->fields('reg', array('uid'));
+  $query->distinct();
+  $query->condition('reg.year', $year);
+  $query->range($offset, $limit);
+
+  ##Filter locations
+  $query->leftJoin('field_data_endpoints', 'rel', 'rel.endpoints_entity_id = reg.id AND rel.bundle = :bundle AND rel.endpoints_entity_type = :type', array(':bundle' => 'has_applied_for_location', ':type' => 'registrations'));
+  $query->leftJoin('field_data_endpoints', 'rel2', 'rel2.revision_id = rel.revision_id AND rel2.bundle = :bundle2 AND rel2.endpoints_entity_type = :type2', array(':bundle2' => 'has_applied_for_location', ':type2' => 'location'));
+  $db_or = db_or();
+  foreach($locations as $location){
+    $db_or->condition('rel2.endpoints_entity_id', $location);
+  }
+  $query->condition($db_or);
+
+  ##Filter week
+  if($week != 'all'){
+    $query->leftJoin('field_data_endpoints', 'drel', 'drel.endpoints_entity_id = reg.id AND drel.bundle = :bundle3 AND drel.endpoints_entity_type = :type3', array(':bundle3' => 'has_applied_for_dates', ':type3' => 'registrations'));
+    $query->leftJoin('field_data_endpoints', 'drel2', 'drel2.revision_id = drel.revision_id AND drel2.bundle = :bundle4 AND drel2.endpoints_entity_type = :type4', array(':bundle4' => 'has_applied_for_dates', ':type4' => 'night'));
+    $query->leftJoin('eck_night', 'night', 'drel2.endpoints_entity_id = night.id');
+    $query->leftJoin('field_data_field_block_week', 'wk', 'wk.entity_id = night.id');
+    $query->condition('wk.field_block_week_value', $week);
+  }
+
+  return $query->execute();
+
+}
+
+
+
+function pond_management_cards_export_batch($locations, $week, $year, $filetype){
+
+  $batch = array(
+    'operations' => array(
+      array('pond_management_cards_export_batch_operation', array($locations, $week, $year, $filetype)),
+      ),
+    'finished' => 'pond_management_batch_download_finished',
+    'title' => t('Exporting ID Cards'),
+    'init_message' => t('ID Cards Export is starting.'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('ID Cards Export has encountered an error.'),
+  );
+  batch_set($batch);
+  batch_process('dash/export/finished');
+}
+
+function pond_management_cards_export_batch_operation($locations, $week, $year, $filetype, &$context){
+
+  $limit = ($filetype == 'csv')?50:10;
+  $context['finished'] = 0;
+  if(!isset($context['sandbox']['offset'])){
+    $context['sandbox']['offset'] = 0;
+  }
+  if (!isset($context['results']['count'])) {
+    $context['results']['count'] = 0;
+  }
+
+  $uids = array();
+  $results = pond_management_export_uids_query($locations, $week, $year, $limit, $context['sandbox']['offset']);
+  foreach($results as $result){
+    if(!empty($result->uid)){
+      $uids[] = $result->uid;
+    }
+  }
+  if(!empty($uids)){
+    if($filetype == 'zip' || $filetype == 'zip_original'){
+      $style = ($filetype == 'zip_original')?'original':'id_card';
+      $style = image_style_load($style);
+
+      $valid_files = array();
+      foreach($uids as $uid){
+        $context['sandbox']['offset']++;
+        $account = user_load($uid);
+        $photo = pond_regos_get_field_value('user', $account, 'field_photo', 0, 'uri');
+        if(!empty($photo)){
+          $derivative = image_style_path($style['name'], $photo);
+          if (!file_exists($derivative)) {
+            image_style_create_derivative($style, $photo, $derivative);
+          }
+          $path = drupal_realpath($derivative);
+          if(file_exists($path)) {
+            $valid_files[] = $path;
+          }
+        }
+      }
+
+      if(count($valid_files)) {
+        if (!isset($context['sandbox']['file'])) {
+          $filename = 'pond_cards.zip';
+          $file_path = file_directory_temp() . '/' . $filename;
+          $zip = new ZipArchive();
+          $result = $zip->open($file_path, ZIPARCHIVE::CREATE);
+          if($result !== TRUE) {
+            dpm('Can\'t create '.$file_path);
+            $context['finished'] = 1;
+          }
+          $zip->addEmptyDir('.');//It won't save an empty zip...
+          $zip->close();
+          if(!file_exists($file_path)){
+            dpm('Can\'t Save New '.$file_path);
+            $context['finished'] = 1;
+          }
+          $context['sandbox']['file'] = $file_path;
+          $context['results']['file'] = $file_path;
+          $context['results']['filename'] = $filename;
+          $context['results']['filetype'] = 'zip';
+        }
+        $zip = new ZipArchive();
+        $result = $zip->open($context['sandbox']['file'], ZIPARCHIVE::CREATE);
+        if($result) {
+          foreach($valid_files as $valid_file) {
+            if($zip->addFile($valid_file, basename($valid_file))){
+              $context['results']['count']++;
+            } else {
+              dpm('Can\'t add to '.$context['sandbox']['file']);
+              $context['finished'] = 1;
+            }
+          }
+        } else {
+          dpm('Can\'t Reopen '.$context['sandbox']['file']);
+          $context['finished'] = 1;
+        }
+        if(!$zip->close()){
+            dpm('Can\'t Save Existing '.$context['sandbox']['file']);
+            $context['finished'] = 1;
+        }
+      }
+    } else {
+      $header_row = array();
+      $rows = array();
+      foreach($uids as $uid){
+        $row = array();
+        $info = pond_get_by_uid($uid, $year);
+        $account = user_load($uid);
+
+        $fields[$year.' ID'] = $info['registrations'];
+        $fields['Title'] = pond_regos_get_field_value('user', $account, 'field_prefix_name');
+        $fields['First Name'] = pond_regos_get_field_value('user', $account, 'field_first_name');
+        $fields['Last Name'] = pond_regos_get_field_value('user', $account, 'field_last_name');
+        $fields['Location'] = $info['location_formatted'];
+        $fields['Role'] = $info['volunteer_role_formatted'];
+        $fields['Photo'] = pond_regos_get_field_value('user', $account, 'field_photo', 0, 'filename');
+
+        foreach($fields as $label => $value){
+          $row[] = (empty($value)) ? '' : $value;
+          if(count($rows) < 1){//Only do this as we make the first row.
+            $header_row[] = $label;
+          }
+        }
+        $rows[] = $row;
+      }
+
+      if (!isset($context['sandbox']['file'])) {
+        $filename = 'pond_cards.csv';
+        $file_path = file_directory_temp() . '/' . $filename;
+        $handle = fopen($file_path, 'w'); // Create the file.
+        fputcsv($handle, $header_row); // Write the labels to the header row.
+        fclose($handle);
+        $context['sandbox']['file'] = $file_path;
+        $context['results']['file'] = $file_path;
+        $context['results']['filename'] = $filename;
+        $context['results']['filetype'] = 'csv';
+      }
+      $handle = fopen($context['sandbox']['file'], 'a');
+      foreach($rows as $row){
+        fputcsv($handle, $row);
+        $context['results']['count']++;
+        $context['sandbox']['offset']++;
+      }
+      fclose($handle);
+    }
+  } else {
+    $context['finished'] = 1;
+  }
+  $context['message'] = t('Exported @count records.', array(
+    '@count' => $context['results']['count'],
+  ));
+
+}
+
+function pond_management_export_csv_batch($locations, $week, $year){
+
+  $batch = array(
+    'operations' => array(
+      array('pond_management_export_csv_batch_operation', array($locations, $week, $year)),
+      ),
+    'finished' => 'pond_management_batch_download_finished',
+    'title' => t('Exporting CSV'),
+    'init_message' => t('CSV Export is starting.'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('CSV Export has encountered an error.'),
+  );
+  batch_set($batch);
+  batch_process('dash/export/finished');
+}
+
+function pond_management_export_csv_batch_operation($locations, $week, $year, &$context){
+  //dpm('operation');
+  //dpm($context);
+  $limit = 50;
+  $context['finished'] = 0;
+  if(!isset($context['sandbox']['offset'])){
+    $context['sandbox']['offset'] = 0;
+  }
+  if (!isset($context['results']['count'])) {
+    $context['results']['count'] = 0;
+  }
+
+  $uids = array();
+  $results = pond_management_export_uids_query($locations, $week, $year, $limit, $context['sandbox']['offset']);
+  foreach($results as $result){
+    if(!empty($result->uid)){
+      $uids[] = $result->uid;
+    }
+  }
+  if(!empty($uids)){
+    $entity_types_to_extract = array('registrations', 'international_application', 'worker', 'reference', 'assessment');//Bundles MUST be named the same as entity type. This order is the order they will be printed in.
+    $entity_types_to_extract_titles = array('location' => 'Location', 'volunteer_role' => 'Role', 'church' => 'Church', 'referee' => 'Referee', 'zone' => 'Assigned Zone');
+    $fields_to_exclude = array(
+      'field_year',
+      'field_user_country',
+      'field_user_city',
+      'field_user_postcode',
+      'field_user_suburb',
+      'field_user_address',
+      'field_photo',
+      'field_photo_rules',
+      'field_tc',
+      'field_agree',
+      'field_merch_info',
+      'field_dietary_info',
+      'field_initial_info',
+      'field_bluecard_info',
+      );
+    $replace_titles = array(
+      'field_address_street_number' => 'Address: Street Number',
+      'field_address_street_name' => 'Address: Street Name',
+      'field_address_suburb' => 'Address: Suburb',
+      'field_address_state' => 'Address: State',
+      'field_address_postcode' => 'Address: Postcode',
+      'field_address_country' => 'Address: Country',
+      );
+    $header_row = array();
+    $rows = array();
+    foreach($uids as $uid){
+      $row = array();
+      $info = pond_get_by_uid($uid, $year);
+
+      ## Get the fields on the user
+      $account = user_load($uid);
+      $fields = field_info_instances('user', 'user');
+      foreach($fields as $field){
+        $values = array();
+        unset($items);
+        if(!in_array($field['field_name'], $fields_to_exclude)){
+          $items = field_get_items('user', $account, $field['field_name']);
+          if(isset($items) && is_array($items)){
+            foreach($items as $item){
+              $view = field_view_value('user', $account, $field['field_name'], $item);
+              $values[] = strip_tags($view['#markup']);
+            }
+          }
+          $values = implode('|', $values);
+          $row[] = (empty($values)) ? '' : $values;
+          if(count($rows) < 1){//Only do this as we make the first row.
+            $label = isset($replace_titles[$field['field_name']])?$replace_titles[$field['field_name']]:$field['label'];
+            $header_row[] = $label;
+          }
+        }
+      }
+
+      ## Get an assortment of other fields.
+      $initial_fields = array();
+      $initial_fields['Email Address'] = $account->mail;
+      $initial_fields['Application Date'] = $info['registration_date'];
+      $initial_fields['Total Cost'] = $info['finances']['price_formatted'];
+      $initial_fields['Amount Paid'] = $info['finances']['paid_formatted'];
+      $initial_fields['Amount Owing'] = $info['finances']['owing_formatted'];
+      $initial_fields['Year'] = $year;
+      $initial_fields['Unique ID (User)'] = $uid;
+      $initial_fields['Unique ID (This Year)'] = $info['registrations'];
+      if(!empty($info['dates'])){
+        $titles = array();
+        foreach($info['dates'] as $date_id){
+          $titles[] = pond_get_block_title($date_id, NULL, 0);
+        }
+        $initial_fields['Dates'] = implode(' | ', $titles);
+      }
+      foreach($entity_types_to_extract_titles as $entity_type => $entity_label){
+        if(!empty($info[$entity_type])){
+          $entity = entity_load_single($entity_type, $info[$entity_type]);
+          $initial_fields[$entity_label] = $entity->title;
+        } else {
+          $initial_fields[$entity_label] = '';
+        }
+      }
+      $initial_fields['Leader'] = $info['leader_formatted'];
+      foreach($initial_fields as $label => $value){
+        $row[] = (empty($value)) ? '' : $value;
+        if(count($rows) < 1){//Only do this as we make the first row.
+          $header_row[] = $label;
+        }
+      }
+
+      ## Get the fields off each of the main entities.
+      foreach($entity_types_to_extract as $entity_type){
+        $bundle_name = $entity_type;
+        if(!empty($info[$entity_type])){
+          $entity = entity_load_single($entity_type, $info[$entity_type]);
+        } else {
+          $entity = entity_create($entity_type, array('type' => $bundle_name));//Skeleton
+        }
+        $fields = field_info_instances($entity_type, $bundle_name);
+        foreach($fields as $field){
+          $values = array();
+          unset($items);
+          if(!in_array($field['field_name'], $fields_to_exclude)){
+            if(!empty($entity->id)){
+              $items = field_get_items($entity_type, $entity, $field['field_name']);
+            }
+            if(isset($items) && is_array($items)){
+              foreach($items as $item){
+                $view = field_view_value($entity_type, $entity, $field['field_name'], $item);
+                $values[] = strip_tags($view['#markup']);
+              }
+            }
+            $values = implode('|', $values);
+            $row[] = (empty($values)) ? '' : $values;
+            if(count($rows) < 1){//Only do this as we make the first row.
+              $label = isset($replace_titles[$field['field_name']])?$replace_titles[$field['field_name']]:$field['label'];
+              $header_row[] = $label;
+            }
+          }
+        }
+      }
+      $rows[] = $row;
+    }
+
+    if (!isset($context['sandbox']['file'])) {
+      $filename = 'pond.csv';
+      $file_path = file_directory_temp() . '/' . $filename;
+      $handle = fopen($file_path, 'w'); // Create the file.
+      fputcsv($handle, $header_row); // Write the labels to the header row.
+      fclose($handle);
+      $context['sandbox']['file'] = $file_path;
+      $context['results']['file'] = $file_path;
+      $context['results']['filename'] = $filename;
+      $context['results']['filetype'] = 'csv';
+    }
+    $handle = fopen($context['sandbox']['file'], 'a');
+    foreach($rows as $row){
+      fputcsv($handle, $row);
+      $context['results']['count']++;
+      $context['sandbox']['offset']++;
+    }
+    fclose($handle);
+
+  } else {
+    $context['finished'] = 1;
+  }
+  /*
+  if($context['results']['count'] > 200){
+    $context['finished'] = 1;
+  }
+  */
+  // Show message updating user on how many subscribers have been exported.
+  $context['message'] = t('Exported @count rows.', array(
+    '@count' => $context['results']['count'],
+  ));
+}
+
+function pond_management_batch_download_finished($success, $results, $operations) {
+  // The 'success' parameter means no fatal PHP errors were detected. All
+  // other error management should be handled using 'results'.
+  if ($success) {
+    $message = format_plural($results['count'], 'One record exported.', '@count records exported.');
+  }
+  else {
+    $message = t('There were errors during the export of this file.');
+  }
+  drupal_set_message($message, 'warning');
+
+  // Set some session variables for the redirect to the file download page.
+  if(!empty($results['file'])){
+    $_SESSION['batch_download_file'] = $results['file'];
+    $_SESSION['batch_download_filename'] = $results['filename'];
+    $_SESSION['batch_download_filetype'] = $results['filetype'];
+  }
+}
+
+function pond_management_batch_download_download() {
+  // For added security, make sure the beginning of the path is the same as that
+  // returned by file_directory_temp() (to prevent users from gaining access to
+  // arbitrary files on the server).
+  if (strpos($_SESSION['batch_download_file'], file_directory_temp()) !== 0) {
+    return 'Access denied.';
+  }
+  switch($_SESSION['batch_download_filetype']){
+    case 'csv':
+      // Add HTTP headers for CSV file download.
+      drupal_add_http_header('Content-Type', 'text/csv; utf-8');
+      drupal_add_http_header('Content-Disposition', 'attachment; filename=' . $_SESSION['batch_download_filename'], TRUE);
+
+      // Allow caching, otherwise IE users can't dl over SSL (see issue #294).
+      drupal_add_http_header('Cache-Control', 'max-age=300; must-revalidate');
+
+      // Read the file to the output buffer and exit.
+      readfile($_SESSION['batch_download_file']);
+      exit;
+    case 'zip';
+      header("Pragma: public");
+      header("Expires: 0");
+      header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+      header("Cache-Control: public");
+      header("Content-Description: File Transfer");
+      header("Content-type: application/octet-stream");
+      header("Content-Disposition: attachment; filename=\"".$_SESSION['batch_download_filename']."\"");
+      header("Content-Transfer-Encoding: binary");
+      header("Content-Length: ".filesize($_SESSION['batch_download_file']));
+      @readfile($_SESSION['batch_download_file']);
+      exit;
+  }
+}
+
+function pond_management_batch_download_page() {
+  global $base_url;
+
+  if (empty($_SESSION['batch_download_filename']) || empty($_SESSION['batch_download_file'])) {
+    return t('Please visit the export page to begin a download.');
+  }
+
+  // Redirect to the download file.
+  $redirect = base_path() . 'dash/export/file';
+  drupal_add_js('setTimeout(function() { window.location.href = "' . $redirect . '"; }, 2000);', 'inline');
+
+  $download_link = l(t('click here to download the file'), 'dash/export/file');
+  $output = '<p>' . t('Your export is now ready for download. The download should begin automatically. If it does not begin downloading within 5 seconds, please !download_link.', array('!download_link' => $download_link)) . '</p>';
+  $output .= '<p>' . l(t("&#8592; Back to Dashboard"), 'dash', array('html' => TRUE)) . '</p>';
+  return $output;
+}
+
+
+/* This function has been superseeded by a batch process
+function pond_management_export_csv($locations, $week, $year){
+
+  ##Primary Query
+  $query = db_select('eck_registrations', 'reg');
+  $query->fields('reg', array('uid'));
+  $query->distinct();
+  $query->condition('reg.year', $year);
+
+  ##Filter locations
+  $query->leftJoin('field_data_endpoints', 'rel', 'rel.endpoints_entity_id = reg.id AND rel.bundle = :bundle AND rel.endpoints_entity_type = :type', array(':bundle' => 'has_applied_for_location', ':type' => 'registrations'));
+  $query->leftJoin('field_data_endpoints', 'rel2', 'rel2.revision_id = rel.revision_id AND rel2.bundle = :bundle2 AND rel2.endpoints_entity_type = :type2', array(':bundle2' => 'has_applied_for_location', ':type2' => 'location'));
+  $db_or = db_or();
+  foreach($locations as $location){
+    $db_or->condition('rel2.endpoints_entity_id', $location);
+  }
+  $query->condition($db_or);
+
+  ##Filter week
+  if($week != 'all'){
+    $query->leftJoin('field_data_endpoints', 'drel', 'drel.endpoints_entity_id = reg.id AND drel.bundle = :bundle3 AND drel.endpoints_entity_type = :type3', array(':bundle3' => 'has_applied_for_dates', ':type3' => 'registrations'));
+    $query->leftJoin('field_data_endpoints', 'drel2', 'drel2.revision_id = drel.revision_id AND drel2.bundle = :bundle4 AND drel2.endpoints_entity_type = :type4', array(':bundle4' => 'has_applied_for_dates', ':type4' => 'night'));
+    $query->leftJoin('eck_night', 'night', 'drel2.endpoints_entity_id = night.id');
+    $query->leftJoin('field_data_field_block_week', 'wk', 'wk.entity_id = night.id');
+    $query->condition('wk.field_block_week_value', $week);
+  }
+
+  $results = $query->execute();
+  $entity_types_to_extract = array('registrations', 'international_application', 'worker', 'reference', 'assessment');//Bundles MUST be named the same as entity type. This order is the order they will be printed in.
+  $entity_types_to_extract_titles = array('location' => 'Location', 'volunteer_role' => 'Role', 'church' => 'Church', 'referee' => 'Referee', 'zone' => 'Assigned Zone');
+  $fields_to_exclude = array(
+    'field_year',
+    'field_user_country',
+    'field_user_city',
+    'field_user_postcode',
+    'field_user_suburb',
+    'field_user_address',
+    'field_photo',
+    'field_photo_rules',
+    'field_tc',
+    'field_agree',
+    'field_merch_info',
+    'field_dietary_info',
+    'field_initial_info',
+    'field_bluecard_info',
+    );
+  $replace_titles = array(
+    'field_address_street_number' => 'Address: Street Number',
+    'field_address_street_name' => 'Address: Street Name',
+    'field_address_suburb' => 'Address: Suburb',
+    'field_address_state' => 'Address: State',
+    'field_address_postcode' => 'Address: Postcode',
+    'field_address_country' => 'Address: Country',
+    );
+  $header_row = array();
+  $rows = array();
+  foreach($results as $result){
+    $row = array();
+    $info = pond_get_by_uid($result->uid, $year);
+
+    ## Get the fields on the user
+    $account = user_load($result->uid);
+    $fields = field_info_instances('user', 'user');
+    foreach($fields as $field){
+      $values = array();
+      unset($items);
+      if(!in_array($field['field_name'], $fields_to_exclude)){
+        $items = field_get_items('user', $account, $field['field_name']);
+        if(isset($items) && is_array($items)){
+          foreach($items as $item){
+            $view = field_view_value('user', $account, $field['field_name'], $item);
+            $values[] = $view['#markup'];
+          }
+        }
+        $values = implode('|', $values);
+        $row[] = (empty($values)) ? '' : $values;
+        if(count($rows) < 1){//Only do this as we make the first row.
+          $label = isset($replace_titles[$field['field_name']])?$replace_titles[$field['field_name']]:$field['label'];
+          $header_row[] = $label;
+        }
+      }
+    }
+
+    ## Get an assortment of other fields.
+    $initial_fields = array();
+    $initial_fields['Email Address'] = $account->mail;
+    $initial_fields['Total Cost'] = $info['finances']['price_formatted'];
+    $initial_fields['Amount Paid'] = $info['finances']['paid_formatted'];
+    $initial_fields['Amount Owing'] = $info['finances']['owing_formatted'];
+    $initial_fields['Year'] = $year;
+    if(!empty($info['dates'])){
+      $titles = array();
+      foreach($info['dates'] as $date_id){
+        $titles[] = pond_get_block_title($date_id, NULL, 0);
+      }
+      $initial_fields['Dates'] = implode(' | ', $titles);
+    }
+    foreach($entity_types_to_extract_titles as $entity_type => $entity_label){
+      if(!empty($info[$entity_type])){
+        $entity = entity_load_single($entity_type, $info[$entity_type]);
+        $initial_fields[$entity_label] = $entity->title;
+      } else {
+        $initial_fields[$entity_label] = '';
+      }
+    }
+    foreach($initial_fields as $label => $value){
+      $row[] = (empty($value)) ? '' : $value;
+      if(count($rows) < 1){//Only do this as we make the first row.
+        $header_row[] = $label;
+      }
+    }
+
+    ## Get the fields off each of the main entities.
+    foreach($entity_types_to_extract as $entity_type){
+      $bundle_name = $entity_type;
+      if(!empty($info[$entity_type])){
+        $entity = entity_load_single($entity_type, $info[$entity_type]);
+      } else {
+        $entity = entity_create($entity_type, array('type' => $bundle_name));//Skeleton
+      }
+      $fields = field_info_instances($entity_type, $bundle_name);
+      foreach($fields as $field){
+        $values = array();
+        unset($items);
+        if(!in_array($field['field_name'], $fields_to_exclude)){
+          if(!empty($entity->id)){
+            $items = field_get_items($entity_type, $entity, $field['field_name']);
+          }
+          if(isset($items) && is_array($items)){
+            foreach($items as $item){
+              $view = field_view_value($entity_type, $entity, $field['field_name'], $item);
+              $values[] = $view['#markup'];
+            }
+          }
+          $values = implode('|', $values);
+          $row[] = (empty($values)) ? '' : $values;
+          if(count($rows) < 1){//Only do this as we make the first row.
+            $label = isset($replace_titles[$field['field_name']])?$replace_titles[$field['field_name']]:$field['label'];
+            $header_row[] = $label;
+          }
+        }
+      }
+    }
+    $rows[] = $row;
+  }
+
+  array_unshift($rows, $header_row);
+  pond_management_export_csv_output($rows);
+
+  //return theme('table', array('header' => $header_row, 'rows' => $rows));
+}
+function pond_management_export_csv_output($rows){
+  header("Content-Type: text/csv");
+  header("Content-Disposition: attachment; filename=pond.csv ");
+  foreach($rows as $row){
+    foreach($row as $value){
+      print '"'.strip_tags($value).'",';
+    }
+    print "\n";
+  }
+  exit();
+}
+*/
+
+
+/**
+ * Export data for the ID cards
+ * $filetype can be either 'csv' (the data) or 'zip' (the images)
+ */
+/* This function has been superseeded by a batch process
+function pond_management_cards_export($locations, $week, $year, $filetype){
+
+  ##Primary Query
+  $query = db_select('eck_registrations', 'reg');
+  $query->fields('reg', array('uid'));
+  $query->distinct();
+  $query->condition('reg.year', $year);
+
+  ##Filter locations
+  $query->leftJoin('field_data_endpoints', 'rel', 'rel.endpoints_entity_id = reg.id AND rel.bundle = :bundle AND rel.endpoints_entity_type = :type', array(':bundle' => 'has_applied_for_location', ':type' => 'registrations'));
+  $query->leftJoin('field_data_endpoints', 'rel2', 'rel2.revision_id = rel.revision_id AND rel2.bundle = :bundle2 AND rel2.endpoints_entity_type = :type2', array(':bundle2' => 'has_applied_for_location', ':type2' => 'location'));
+  $db_or = db_or();
+  foreach($locations as $location){
+    $db_or->condition('rel2.endpoints_entity_id', $location);
+  }
+  $query->condition($db_or);
+
+  ##Filter week
+  if($week != 'all'){
+    $query->leftJoin('field_data_endpoints', 'drel', 'drel.endpoints_entity_id = reg.id AND drel.bundle = :bundle3 AND drel.endpoints_entity_type = :type3', array(':bundle3' => 'has_applied_for_dates', ':type3' => 'registrations'));
+    $query->leftJoin('field_data_endpoints', 'drel2', 'drel2.revision_id = drel.revision_id AND drel2.bundle = :bundle4 AND drel2.endpoints_entity_type = :type4', array(':bundle4' => 'has_applied_for_dates', ':type4' => 'night'));
+    $query->leftJoin('eck_night', 'night', 'drel2.endpoints_entity_id = night.id');
+    $query->leftJoin('field_data_field_block_week', 'wk', 'wk.entity_id = night.id');
+    $query->condition('wk.field_block_week_value', $week);
+  }
+
+  $results = $query->execute();
+
+  if($filetype == 'zip' || $filetype == 'zip_original'){
+    $files = array();
+    foreach($results as $result){
+      $account = user_load($result->uid);
+      $photo = pond_regos_get_field_value('user', $account, 'field_photo', 0, 'uri');
+      if(!empty($photo)){
+        $files[] = $photo;
+      }
+    }
+    if($filetype == 'zip_original'){
+      pond_management_download_zip($files, 'original');
+    } else {
+      pond_management_download_zip($files);
+    }
+  } else {
+    $header_row = array();
+    $rows = array();
+    foreach($results as $result){
+      $row = array();
+      $info = pond_get_by_uid($result->uid, $year);
+      $account = user_load($result->uid);
+
+      $fields['Title'] = pond_regos_get_field_value('user', $account, 'field_prefix_name');
+      $fields['First Name'] = pond_regos_get_field_value('user', $account, 'field_first_name');
+      $fields['Last Name'] = pond_regos_get_field_value('user', $account, 'field_last_name');
+      $fields['Location'] = $info['location_formatted'];
+      $fields['Role'] = $info['volunteer_role_formatted'];
+      $fields['Photo'] = pond_regos_get_field_value('user', $account, 'field_photo', 0, 'filename');
+
+      foreach($fields as $label => $value){
+        $row[] = (empty($value)) ? '' : $value;
+        if(count($rows) < 1){//Only do this as we make the first row.
+          $header_row[] = $label;
+        }
+      }
+      $rows[] = $row;
+    }
+
+    array_unshift($rows, $header_row);
+    pond_management_export_csv_output($rows);
+    //dpm($rows);
+    //return theme('table', array('header' => $header_row, 'rows' => $rows));
+  }
+}
+
+function pond_management_download_zip($files, $style = 'id_card'){
+  $style = image_style_load($style);
+  $valid_files = array();
+
+  if(is_array($files)) {
+    foreach($files as $file) {
+      $derivative = image_style_path($style['name'], $file);
+      if (!file_exists($derivative)) {
+        image_style_create_derivative($style, $file, $derivative);
+      }
+      $path = drupal_realpath($derivative);
+      if(file_exists($path)) {
+        $valid_files[] = $path;
+      }
+    }
+  }
+
+  if(!count($valid_files)) {
+    dpm('No Files Selected');
+    return FALSE;
+  }
+
+  $zip_name = 'test.zip';
+  $zipfile = tempnam("tmp", "zip");
+
+  $zip = new ZipArchive();
+  $result = $zip->open($zipfile, ZIPARCHIVE::CREATE);
+  if($result !== TRUE) {
+    dpm('Can\'t export '.$zipfile);
+    return FALSE;
+  }
+
+  foreach($valid_files as $valid_file) {
+    $zip->addFile($valid_file, basename($valid_file));
+  }
+
+  $zip->close();
+
+  if(!file_exists($zipfile)){
+    dpm('Error with '.$zipfile);
+    return FALSE;
+  }
+
+  header("Pragma: public");
+  header("Expires: 0");
+  header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+  header("Cache-Control: public");
+  header("Content-Description: File Transfer");
+  header("Content-type: application/octet-stream");
+  header("Content-Disposition: attachment; filename=\"".$zip_name."\"");
+  header("Content-Transfer-Encoding: binary");
+  header("Content-Length: ".filesize($zipfile));
+  @readfile($zipfile);
+}
+*/
+
+
+function pond_management_merge_form($form, &$form_state, $entity_type){
+  if(!user_access('eck administer '.$entity_type.' '.$entity_type.' entities')){
+    drupal_not_found();
+    exit();
+  }
+  drupal_set_title(ucfirst($entity_type) . ' Merge');
+  $entity_options = array();
+  $entities = entity_load(check_plain($entity_type));
+  if(is_array($entities)){
+    foreach($entities as $entity){
+      $entity_options[$entity->id] = $entity->title;
+    }
+  }
+  asort($entity_options);
+  $form['type'] = array(
+    '#type' => 'hidden',
+    '#value' => check_plain($entity_type),
+  );
+  $form['from'] = array(
+    '#type' => 'select',
+    '#multiple' => TRUE,
+    '#options' => $entity_options,
+    '#title' => t('From:'),
+    '#size' => 20,
+    '#default_value' => isset($_REQUEST['from'])?$_REQUEST['from']:'',
+  );
+  $form['to'] = array(
+    '#type' => 'select',
+    '#options' => $entity_options,
+    '#title' => t('To:'),
+    '#default_value' => isset($_REQUEST['to'])?$_REQUEST['to']:'',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Go'),
+  );
+  return $form;
+}
+function pond_management_merge_form_submit(&$form, &$form_state){
+  $to = $form_state['values']['to'];
+  $from = $form_state['values']['from'];
+  if(!in_array($to, $from)){
+    $from[$to] = $to;
+  }
+  drupal_goto('admin/config/development/duplicates/merge', array('query' => array('default' => $to, 'ids' => $from, 'type' => $form_state['values']['type'])));
+}
+
+
+/*
+ * Gets passed an comma-seperated list of uids from VBO
+ */
+function pond_management_allocate_form($form = array(), &$form_state, $uids=0) {
+  $uids_array = explode(',', $uids);
+  foreach($uids_array as $uid){
+    $info = pond_get_by_uid($uid);
+    $names[] = array($info['base_title'], 'children' => array('Zone: '.$info['zone_formatted'], 'Leader: '.$info['leader_formatted'], 'Hotels: '.$info['building_formatted'], ));
+  }
+
+  $form['names'] = array(
+    '#type' => 'item',
+    '#markup' => theme_item_list(array('items' => $names, 'title' => 'Selected Registrations', 'type' => 'ul', 'attributes' => array())),
+  );
+  $form['uids'] = array(
+    '#type' => 'value',
+    '#value' => $uids,
+  );
+
+
+  //Zones
+  $zones = entity_load('zone');
+  foreach($zones as $key => $value){
+    $active = pond_regos_get_field_value('zone', $value, 'field_active');
+    //Todo: If the zones are in the same location as the registration...
+    if($active){
+      $zones_options[$key] = $value->title;
+    }
+  }
+  asort($zones_options);
+  $zones_options = array('none' => 'Don\'t Change', 0 => 'No Zone')+(array)$zones_options;
+
+  $form['zone'] = array(
+    '#type' => 'select',
+    '#title' => t('Assign to Zone'),
+    '#options' => $zones_options,
+    '#default_value' => 'none',
+  );
+
+
+  //Buildings
+  $buildings = entity_load('building');
+  foreach($buildings as $key => $value){
+    //Todo: If the buildings are in the same location as the registration...
+    $buildings_options[$key] = $value->title;
+  }
+  asort($buildings_options);
+  $buildings_options = array('none' => 'Don\'t Change', 0 => 'No Hotel')+(array)$buildings_options;
+
+  $form['building'] = array(
+    '#type' => 'select',
+    '#title' => t('Assign to Hotels'),
+    '#options' => $buildings_options,
+    '#default_value' => array('none'),
+    '#multiple' => TRUE,
+    '#size' => 20,
+  );
+
+  //Team Leader
+  $leader_options = pond_regos_get_team_leaders();
+  asort($leader_options);
+  $leader_options = array('none' => 'Don\'t Change', 0 => 'No Team Leader')+(array)$leader_options;
+  $form['leader'] = array(
+    '#type' => 'select',
+    '#title' => t('Assign to Team Leader'),
+    '#options' => $leader_options,
+    '#default_value' => 'none',
+  );
+
+  if(count($uids_array) == 1){
+    $worker = entity_load_single('worker', $info['worker']);
+    $number = pond_regos_get_field_value('worker', $worker, 'field_rf_mobile_number');
+    $form['field_rf_mobile_number'] = array(
+      '#type' => 'textfield',
+      '#title' => t('RF Mobile Number'),
+      '#default_value' => $number,
+    );
+  }
+
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Allocate'),
+      '#weight' => 1000,
+  );
+
+  return $form;
+}
+
+
+function pond_management_allocate_form_submit($form, &$form_state){
+  $uids = explode(',', $form_state['values']['uids']);
+  foreach($uids as $uid){
+    $info = pond_get_by_uid($uid);
+    if(is_numeric($form_state['values']['zone'])){
+      pond_save_relationship('is_assigned_to_zone', 'worker', $info['worker'], 'zone', $form_state['values']['zone'], TRUE);
+    }
+
+    if(is_numeric($form_state['values']['leader'])){
+      pond_save_relationship('has_team_leader', 'worker', $info['worker'], 'worker', $form_state['values']['leader'], TRUE);
+    }
+
+    //dpm($form_state['values']['field_rf_mobile_number']);
+    if(isset($form_state['values']['field_rf_mobile_number'])){
+      $worker = entity_load_single('worker', $info['worker']);
+      $worker->field_rf_mobile_number['und'][0]['value'] = $form_state['values']['field_rf_mobile_number'];
+      $worker->save();
+      //dpm($worker);
+    }
+
+    ##BUILDINGS
+    //Doesn't use pond_save_relationship() because we are dealing with arrays - consider improving the function
+    $new_buildings = $form_state['values']['building'];
+    if(!isset($new_buildings['none'])){
+      if(isset($new_buildings[0])){
+        unset($new_buildings[0]);
+      }
+      if(is_array($new_buildings)){
+        $query = pond_relation_get('worker', $info['worker'], 'is_assigned_to_building');
+        if(is_array($query['is_assigned_to_building'])){
+          foreach($query['is_assigned_to_building'] as $value){
+            if(in_array($value->endpoints['und'][1]['entity_id'], $new_buildings)){
+              //If we need to keep it, don't bother deleting and recreating it...
+              unset($new_buildings[$value->endpoints['und'][1]['entity_id']]);//unset it so we don't make one, it already exists
+            } else {
+              // Has not been selected in the form, so delete it.
+              relation_delete($value->rid);
+            }
+          }
+        }
+        foreach($new_buildings as $new_building){
+          // Link Rego to Dates
+          $relation = relation_create('is_assigned_to_building', array(
+              array('entity_type' => 'worker', 'entity_id' => $info['worker']),
+              array('entity_type' => 'building', 'entity_id' => $new_building),
+              ));
+          $rid = relation_save($relation);
+        }
+      }
+    }
+    cache_clear_all('pond:user_info:' . $uid, 'cache_pond', TRUE);
+  }
+  drupal_set_message('Allocated');
+  drupal_goto('dash/allocate');
+}
+
+
+function pond_management_assess_form($form = array(), &$form_state, $uid=0, $year=NULL) {
+  $year = isset($year)?$year:pond_get_year();
+  $info = pond_get_by_uid($uid);
+
+  $role = str_replace('Chaplain - ', '', $info['volunteer_role_formatted']);
+  drupal_set_title($role.' Assessment '.$year);
+
+  $form['name'] = array(
+    '#type' => 'item',
+    '#title' => 'Assessment For',
+    '#markup' => $info['base_title'].' - '.$role,
+  );
+  $form['uid'] = array(
+    '#type' => 'value',
+    '#value' => $uid,
+  );
+  $form['year'] = array(
+    '#type' => 'value',
+    '#value' => $year,
+  );
+
+  //Create an assessment entity so we can extract all the fields required
+  $entity = entity_create('assessment', array('type' => 'assessment'));
+
+  // Add all the entity fields to this form
+  field_attach_form('assessment', $entity, $form, $form_state);
+
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Submit Assessment'),
+      '#weight' => 1000,
+  );
+
+
+  return $form;
+}
+function pond_management_assess_form_submit($form, &$form_state){
+  $user = user_load($form_state['values']['uid']);
+  $year = $form_state['values']['year'];
+  if(!empty($user->uid)){
+    //debug($form_state['values']);
+    $info = pond_get_by_uid($user->uid);
+
+    ## Make a New Assessment
+    $entity = entity_create('assessment', array('type' => 'assessment'));
+    field_attach_form_validate($entity->entityType(), $entity, $form, $form_state);
+    field_attach_submit($entity->entityType(), $entity, $form, $form_state);
+
+    $entity->title = $info['base_title'].' A'.substr($year, 2, 2);
+    $entity->year = $year;
+    $entity->uid = $user->uid;
+    $entity->created = REQUEST_TIME;
+    $entity->save();
+    cache_clear_all('pond:user_info:' . $user->uid . ':' . $year, 'cache_pond', TRUE);
+    drupal_set_message('Thankyou for assessing '.$info['base_title']);
+    drupal_goto('dash');
+  }
+
+}
+
+
+function pond_management_international_form($form = array(), &$form_state, $uid=0, $year=NULL) {
+  $year = isset($year)?$year:pond_get_year();
+  $info = pond_get_by_uid($uid);
+
+  $form['name'] = array(
+    '#type' => 'item',
+    '#title' => 'International Details For',
+    '#markup' => $info['base_title'].' - '.$year,
+  );
+  $form['uid'] = array(
+    '#type' => 'value',
+    '#value' => $uid,
+  );
+  $form['year'] = array(
+    '#type' => 'value',
+    '#value' => $year,
+  );
+
+  //Create an assessment entity so we can extract all the fields required
+  $entity = entity_create('international_application', array('type' => 'international_application'));
+
+  // Add all the entity fields to this form
+  field_attach_form('international_application', $entity, $form, $form_state);
+
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save'),
+      '#weight' => 1000,
+  );
+
+
+  return $form;
+}
+function pond_management_international_form_submit($form, &$form_state){
+  $user = user_load($form_state['values']['uid']);
+  $year = $form_state['values']['year'];
+  if(!empty($user->uid) && !empty($year)){
+    //debug($form_state['values']);
+    $info = pond_get_by_uid($user->uid);
+
+    ## Make a New International entity
+    $entity = entity_create('international_application', array('type' => 'international_application'));
+    field_attach_form_validate($entity->entityType(), $entity, $form, $form_state);
+    field_attach_submit($entity->entityType(), $entity, $form, $form_state);
+
+    $entity->title = $info['base_title'].' Int'.substr($year, 2, 2);
+    $entity->year = $year;
+    $entity->uid = $user->uid;
+    $entity->save();
+    cache_clear_all('pond:user_info:' . $user->uid . ':' . $year, 'cache_pond', TRUE);
+    drupal_set_message('International Details Saved.');
+    drupal_goto('dash');
+  }
+
+}
+
+

@@ -1,0 +1,3 @@
+There is something you need to know about the Pond.
+
+The Pond relies heavily on a configured set of "ECK" entities, their "fields", and "relations" between them. One day I will actually export them all, and perhaps include them in the modules as install files. On that day, we will be able to install a brand new Drupal, install the pond modules, and have a fully functional and empty pond without any user data. But this is not that day. For now, this code cannot live apart from the database. Let's make sure we have good database backups.

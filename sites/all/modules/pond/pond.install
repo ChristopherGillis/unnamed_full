@@ -1,0 +1,19 @@
+<?php
+
+/**
+ * Implement hook_schema
+ */
+function pond_schema() {
+  $schema['cache_pond'] = drupal_get_schema_unprocessed('system', 'cache');
+  return $schema;
+}
+
+function mymodule_install() {
+  // Create my tables.
+  drupal_install_schema('pond');
+}
+
+function mymodule_uninstall() {
+  // Drop my tables.
+  drupal_uninstall_schema('pond');
+}

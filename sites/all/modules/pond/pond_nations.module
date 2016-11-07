@@ -1,0 +1,163 @@
+<?php
+
+/**
+ * Implement hook_form_alter()
+ */
+function pond_nations_form_alter(&$form, &$form_state, $form_id){
+  switch($form_id){
+    case 'eck__entity__form_edit_nation_nation':
+    case 'eck__entity__form_add_nation_nation':
+      $entity = $form['#entity'];
+      $lang = $form['field_locations']['#language'];
+
+      $form['#validated'] = TRUE;//This is a security flaw, but I don't know how to avoid illegal choice errors.
+
+      ## Locations
+      $options = pond_management_get_accessible_locations(1);
+      $form['field_locations'][$lang]['#options'] = $options;
+      $form_state['field']['field_locations'][$lang]['field']['settings']['allowed_values'] = $options;
+      if(empty($form['field_locations'][$lang]['#default_value']) && isset($entity->field_locations[$lang])){
+        foreach($entity->field_locations[$lang] as $value){
+          $form['field_locations'][$lang]['#default_value'][] = $value['value'];
+        }
+      }
+
+      ## Currency
+      if(module_exists('currency')){
+        $options = currency_options();
+        $form['field_national_currency'][$lang]['#options'] = $options;
+        $form_state['field']['field_national_currency'][$lang]['field']['settings']['allowed_values'] = $options;
+        if(empty($form['field_national_currency'][$lang]['#default_value']) && isset($entity->field_national_currency[$lang])){
+          foreach($entity->field_national_currency[$lang] as $value){
+            $form['field_national_currency'][$lang]['#default_value'][] = $value['value'];
+          }
+        }
+      }
+
+      ## Methods
+      $options = array();
+      $payment_methods = entity_load('payment_method');
+      foreach($payment_methods as $method){
+        if(!isset($method->controller_data['status']) || $method->controller_data['status'] != 'payment_status_success'){
+          //I only want ones that actually pay
+          $options[$method->pmid] = $method->title_specific;
+        }
+      }
+      $form['field_national_payment_method'][$lang]['#options'] = $options;
+      $form_state['field']['field_national_payment_method'][$lang]['field']['settings']['allowed_values'] = $options;
+      if(empty($form['field_national_payment_method'][$lang]['#default_value']) && isset($entity->field_national_payment_method[$lang])){
+        foreach($entity->field_national_payment_method[$lang] as $value){
+          $form['field_national_payment_method'][$lang]['#default_value'][] = $value['value'];
+        }
+      }
+  }
+}
+
+function pond_nations_get(){
+  if(empty($_SESSION['pond_nation'])){
+    $default_nation = 1;//Australia
+    $url = explode('.', $_SERVER['HTTP_HOST']);
+    //$url[0] = 'za';//Just for testing South Africa Locally
+    $query = new EntityFieldQuery();
+    $results = $query->entityCondition('entity_type', 'nation')
+            ->fieldCondition('field_subdomain', 'value', $url[0])
+            ->execute();
+    if(empty($results['nation'])){
+      $_SESSION['pond_nation'] = $default_nation;
+    } else {
+      $_SESSION['pond_nation'] = key($results['nation']);
+    }
+  }
+  return $_SESSION['pond_nation'];
+}
+
+function pond_nations_get_location_currency($loc){
+  $currency = &drupal_static(__FUNCTION__);
+  if(empty($currency)){
+    $nation = pond_nations_get_location_nation($loc);
+    $currency = pond_regos_get_field_value('nation', $nation, 'field_national_currency');
+    $currency = currency_load($currency);
+  }
+  return $currency;
+}
+
+function pond_nations_get_location_earlybird($loc){
+  $earlybird = &drupal_static(__FUNCTION__);
+  if(empty($earlybird)){
+    $nation = pond_nations_get_location_nation($loc);
+    $earlybird = pond_regos_get_field_value('nation', $nation, 'field_earlybird_cutoff');
+  }
+  return $earlybird;
+}
+
+function pond_nations_get_location_training_link($loc){
+  $training = &drupal_static(__FUNCTION__);
+  if(empty($training)){
+    $nation = pond_nations_get_location_nation($loc);
+    $training = pond_regos_get_field_value('nation', $nation, 'field_training_link');
+  }
+  return $training;
+}
+
+function pond_nations_get_location_method($loc){
+  $pmid = &drupal_static(__FUNCTION__);
+  if(empty($pmid)){
+    $nation = pond_nations_get_location_nation($loc);
+    $bt = pond_regos_get_field_value('nation', $nation, 'field_bank_transfer');
+    if(!empty($bt)){
+      $pmid = 'bt';
+    } else {
+      $pmid = pond_regos_get_field_value('nation', $nation, 'field_national_payment_method');
+    }
+    if(empty($pmid)){
+      $pmid = 4;
+    }
+  }
+  return $pmid;
+}
+
+function pond_nations_get_location_nation($loc){
+  $query = new EntityFieldQuery();
+  $results = $query->entityCondition('entity_type', 'nation')
+          ->fieldCondition('field_locations', 'value', $loc)
+          ->execute();
+  if(empty($results['nation'])){
+    return FALSE;
+  }
+  return entity_load_single('nation', key($results['nation']));
+}
+
+function pond_nations_get_locations(){
+  $locations = array();
+  $nation_id = pond_nations_get();
+  $nation = entity_load_single('nation', $nation_id);
+  $items = field_get_items('nation', $nation, 'field_locations');
+  foreach($items as $item){
+    $locations[] = $item['value'];
+  }
+  return $locations;
+}
+
+
+
+function pond_nations_entity_property_info() {
+  $info['location']['properties']['nation'] = array(
+    'label' => t("Nation"),
+    'description' => t("Link to the relevant nation."),
+    'type' => 'nation',
+    'getter callback' => 'pond_nations_metadata_entity_get_properties',
+  );
+  return $info;
+}
+
+function pond_nations_metadata_entity_get_properties($entity, array $options, $name, $entity_type) {
+  switch ($entity_type) {
+    case 'location':
+      switch ($name) {
+        case 'nation':
+          return pond_nations_get_location_nation($entity->id);
+        break;
+      }
+    break;
+  }
+}

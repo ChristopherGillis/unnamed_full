@@ -1,0 +1,10 @@
+<?php
+
+function field_displayonly_field_schema($field) {
+  $columns = array(
+    'displayonly' => array('type' => 'text', 'size' => 'big', 'not null' => FALSE),
+  );
+  return array(
+    'columns' => $columns,
+  );
+}

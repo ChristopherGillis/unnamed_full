@@ -1,0 +1,226 @@
+<?php
+
+/**
+ * Implementation of hook_menu
+ */
+function pond_sandbox_menu(){
+  $items = array();
+  $items['sandbox_playground'] = array(
+    'page callback' => 'pond_sandbox_playground',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+function pond_sandbox_playground() {
+  $return = '';
+  
+  /* This is how I changed all locations from state specific bundles to a single bundle called "location"
+  $locations = entity_load('location');
+  foreach($locations as $location){
+    $location->type = 'location';
+    $location->save();
+  }*/
+
+
+
+  //$ent = entity_load('registrations', array(1429));
+  //dpm($ent);
+
+
+  /* This was modifying all blocks - setting year as a property, and all the right values into dates, week, and type fields.
+  $blocks = entity_load('night');
+  foreach($blocks as $block){
+    if($block->type == 'block'){
+      //dpm($block);
+      if(empty($block->field_block_type) || empty($block->field_block_week)){
+        switch(TRUE){
+          case strpos($block->title, 'Week 1') !== FALSE:
+            $block->field_block_week['und'][0]['value'] = 1;
+          break;
+          case strpos($block->title, 'Week 2') !== FALSE:
+            $block->field_block_week['und'][0]['value'] = 2;
+          break;
+        }
+        switch(TRUE){
+          case strpos($block->title, 'Full Time') !== FALSE:
+            $block->field_block_type['und'][0]['value'] = 'Full Time';
+          break;
+          case strpos($block->title, 'Block A') !== FALSE:
+            $block->field_block_type['und'][0]['value'] = 'Block A';
+          break;
+          case strpos($block->title, 'Block B') !== FALSE:
+            $block->field_block_type['und'][0]['value'] = 'Block B';
+          break;
+        }
+      }
+      if(empty($block->field_block_week)){
+        $block->field_block_week['und'][0]['value'] = 1;
+      }
+      if(empty($block->field_dates) && !empty($block->field_block_nights)){
+        $nights = array();
+        foreach($block->field_block_nights['und'] as $night){
+          $night = entity_load_single('night', $night['target_id']);
+          $nights[] = $night->field_night_night['und'][0]['value'];
+        }
+        sort($nights);
+        $block->year = substr($nights[0], 0, 4);
+        $block->field_dates['und'][0]['value'] = $nights[0];
+        $block->field_dates['und'][0]['value2'] = $nights[count($nights)-1];
+      }
+      $block->save();//HOT
+    }
+  }
+  */
+
+  /*Set year as a property on Registrations
+  $registrations = entity_load('registrations');
+  $i=0;
+  foreach($registrations as $registration)
+  {
+    if(empty($registration->year))
+    {
+      $i++;
+      if(empty($registration->created)){
+        $registration->created = $registration->changed;
+      }
+      $year = date('Y', $registration->created);
+      if($year > 2000){//avoid 1970
+        $registration->year = $year;
+        $registration->save();
+      }
+    }
+  }
+  $return = $i.' Registrations Remaining';
+  */
+
+  /*Set year as a property on other entity types
+  $entity_types = array('assessment', 'reference', 'worker');
+  foreach($entity_types as $entity_type)
+  {
+    $entities = entity_load($entity_type);
+    $i=0;
+    foreach($entities as $entity)
+    {
+      if(empty($entity->year))
+      {
+        $i++;
+        if(empty($entity->created) && !empty($entity->changed)){
+          $entity->created = $entity->changed;
+        }
+        if(!empty($entity->field_year['und'][0]['value']))
+        {
+          $entity->year = $entity->field_year['und'][0]['value'];
+          $entity->save();
+        }
+        else
+        {
+          $year = date('Y', $entity->created);
+          if($year > 2000){//avoid 1970
+            $entity->year = $year;
+            $entity->save();
+          }
+        }
+      }
+      elseif(!empty($entity->field_year['und'][0]['value']) && $entity->year != $entity->field_year['und'][0]['value'])
+      {
+        $i++;
+        $entity->year = $entity->field_year['und'][0]['value'];
+        $entity->save();
+      }
+    }
+    $return .= '<br />'.$i.' remaining of type '.$entity_type;
+  }
+  */
+  
+  /* Set inactive referees to "pending"
+  $referees = entity_load('referee');
+  $i=0;
+  foreach($referees as $referee)
+  {
+    if(empty($referee->field_referee_status))
+    {
+      $i++;
+      if(isset($referee->field_active['und'][0]['value'])){
+        switch ($referee->field_active['und'][0]['value']){
+          case 1:
+            $referee->field_referee_status['und'][0]['value'] = 'active';
+            $referee->save();
+          break;
+          case 0:
+          default:
+            $referee->field_referee_status['und'][0]['value'] = 'pending';
+            $referee->save();
+          break;
+        }
+      }
+    }
+  }
+  $return = $i.' Referees Remaining';
+ */
+
+/*
+  //I need to go through all churches that have no state defined, and check the old address fields, and port all of the data over.
+  $churches = entity_load('church');
+  $i=0;
+  foreach($churches as $church)
+  {
+    if(empty($church->field_address_state) && !empty($church->field_church_state))
+    {
+      $i++;
+
+      if(!empty($church->field_church_address['und'][0]['value']) && empty($church->field_address_street_name)){
+        $church->field_address_street_name['und'][0]['value'] = $church->field_church_address['und'][0]['value'];
+      }
+
+      if(!empty($church->field_church_suburb['und'][0]['value']) && empty($church->field_address_suburb)){
+        $church->field_address_suburb['und'][0]['value'] = $church->field_church_suburb['und'][0]['value'];
+      }
+      if(!empty($church->field_church_state['und'][0]['value']) && empty($church->field_address_state)){
+        $church->field_address_state['und'][0]['value'] = $church->field_church_state['und'][0]['value'];
+      }
+      if(empty($church->field_address_country)){
+        $church->field_address_country['und'][0]['value'] = 'Australia';
+      }
+      if(!empty($church->field_church_postcode['und'][0]['value']) && empty($church->field_address_postcode)){
+        $church->field_address_postcode['und'][0]['value'] = $church->field_church_postcode['und'][0]['value'];
+      }
+
+      $church->save();
+
+      if($i == 1){
+        dpm($church);
+      }
+    }
+  }
+  $return = $i.' Churches Remaining';
+*/
+
+  /*pond_management_download_zip(array(
+    'Aaron_Lim.JPG',
+    'Adam_Kim.JPG',
+  ));*/
+
+
+  $referees = entity_load('referee');
+  $i=0;
+  foreach($referees as $referee)
+  {
+    $related_entities = entity_duplicates_find_related_entities('referee', $referee->id);
+    $church = array();
+    if(!empty($related_entities)){
+      foreach($related_entities as $related_entity){
+        //Note the variable variable
+        ${$related_entity->type}[$related_entity->id] = $related_entity->title;
+      }
+    }
+    if(!empty($church) && count($church) > 1){
+      $i++;
+      $return .= '<p>'.$referee->title.': '.implode(', ', $church). ' ('.count($church).")<br />\n".url('referee/referee/'.$referee->id.'/edit', array('absolute' => TRUE)).'</p>';
+    }
+  }
+  $return .= $i.' Referees Remaining';
+
+  return $return;
+}

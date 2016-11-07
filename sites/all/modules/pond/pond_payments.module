@@ -1,0 +1,617 @@
+<?php
+
+/**
+ * Implementation of hook_menu
+ */
+function pond_payments_menu(){
+  $items = array();
+  $items['dash/financials'] = array(
+    'title' => 'User Financials',
+    'page callback' => 'pond_payments_user_financials',
+    'access arguments' => array('manual payments'),
+    'type' => MENU_CALLBACK
+  );
+  $items['dash/receive_eft'] = array(
+    'title' => 'Receive Bank Transfer',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_payments_receive_transfer_form'),
+    'access arguments' => array('manual payments'),
+    'type' => MENU_CALLBACK
+  );
+  $items['donate'] = array(
+    'title' => 'Make a Donation',
+    'page callback' => 'pond_payments_donation_page',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+
+  $items['pdf_download'] = array(
+    'title' => 'Download PDF',
+    'description' => 'PDF Receipt',
+    'page callback' => 'pond_payments_pdf_display',
+    'access callback' => TRUE,
+    'file' => 'pond_payments.pdf.inc',
+  );
+
+  $items['dash/bulk-payment-form'] = array(
+    'page callback' => 'pond_payments_bulk_payment_form',
+    'access arguments' => array('manual payments'),
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_permission()
+ */
+function pond_payments_permission() {
+  return array(
+    'manual payments' => array(
+      'title' => t('Record Payments Manually'),
+    ),
+    'delete payments' => array(
+      'title' => t('Delete Manual Payments'),
+    ),
+    'see agg payments' => array(
+      'title' => t('See Aggregate Payment Figures'),
+    )
+  );
+}
+
+
+/**
+ * Implements hook_block_info()
+ */
+function pond_payments_block_info(){
+  $blocks['pond_financials'] = array(
+    'info' => t('Pond Financials'),
+    'cache' => DRUPAL_NO_CACHE,//We do our own caching. ToDo: Experiment with this.
+  );
+  return $blocks;
+}
+/**
+ * Implements hook_block_view().
+ */
+function pond_payments_block_view($delta = '') {
+  switch ($delta) {
+    case 'pond_financials':
+      $block['subject'] = '';
+      $block['content'] = pond_payments_user_financials_block();
+      break;
+  }
+  return $block;
+}
+
+/**
+ * A block that shows all the financial details for a certain user.
+ * Includes a payment form.
+ */
+function pond_payments_user_financials_block(){
+  global $user;//Means this block will only work for the currently logged-in user.
+  $info = pond_get_by_uid($user->uid);
+  $return = theme('pond_payments_user_financials', array('finances' => $info['finances']));
+  if(module_exists('payment_arbitrary')) {
+    $return .= drupal_render(drupal_get_form('payment_arbitrary_form', $user->uid, array('build_type' => 'personal')));
+  }
+  return $return;
+}
+
+/**
+ * A page that shows all the financial details for a certain user.
+ * Includes a payment form.
+ */
+function pond_payments_user_financials($uid = 0){
+  if(empty($uid) || !is_numeric($uid)){ return 'No User Selected'; }
+  $info = pond_get_by_uid($uid);
+  //if(empty($info['registrations'])){
+    //$return = t('This person has not applied for %year', array('%year' => pond_get_year()));
+  //} else {
+    $return = '<h2>'.$info['base_title'].'</h2>';
+    $return .= theme('pond_payments_user_financials', array('finances' => $info['finances']));
+  //}
+  if(module_exists('payment_arbitrary')) {
+    $form = drupal_get_form('payment_arbitrary_form', $uid);
+    $form = drupal_render($form);
+    $return .=  '<div class="payment_option"><h2>Record a Payment</h2>'. $form .'</div>';
+  }
+  return $return;
+}
+
+/**
+ * A page that allows anyone to make a donation. Even anon.
+ */
+function pond_payments_donation_page(){
+  global $user;
+  $return = '';
+  if(module_exists('payment_arbitrary')) {
+    $return .=  '<h2>Make a Donation</h2>';
+    $form = drupal_get_form('payment_arbitrary_form', $user->uid, array('build_type' => 'donation'));
+    $return .= drupal_render($form);
+  }
+  return $return;
+}
+
+function pond_payments_receive_transfer_form($form, &$form_state){
+  $form['reference'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Reference Number',
+    '#required' => TRUE,
+  );
+  $form['amount'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Amount',
+    '#required' => TRUE,
+  );
+  if(module_exists('currency')){
+    $form['currency'] = array(
+      '#type' => 'select',
+      '#title' => 'Currency',
+      '#options' => currency_options(),
+      '#default_value' => 'ZAR',
+      '#required' => TRUE,
+    );
+  }
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Save'
+  );
+  return $form;
+}
+
+function pond_payments_receive_transfer_form_validate(&$form, &$form_state){
+  $account = user_load(str_replace('rf', '', strtolower($form_state['values']['reference'])));
+  if(empty($account->uid)){
+    form_set_error('reference', t('Reference Number is not valid'));
+  } else {
+    $form_state['values']['reference'] = $account->uid;
+  }
+}
+
+function pond_payments_receive_transfer_form_submit(&$form, &$form_state){
+  $info = pond_get_by_uid($form_state['values']['reference']);
+  $year = pond_get_year();
+  $payment = new Payment(array(
+    'currency_code' => $form_state['values']['currency'], 
+    'uid' => $info['user'],
+  ));
+  $line_item = new PaymentLineItem(array(
+    'amount' => $form_state['values']['amount'],
+    'description' => 'EFT',
+  ));
+  $payment->setLineItem($line_item);
+  $payment->method = entity_load_single('payment_method', 3);
+  $payment->setStatus(new PaymentStatusItem(PAYMENT_STATUS_SUCCESS));
+  entity_save('payment', $payment);
+  cache_clear_all('pond:user_info:' . $info['user'] . ':' . $year, 'cache_pond', TRUE);
+  drupal_set_message('Payment Recorded for '.$info['full_name']);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function pond_payments_theme($existing, $type, $theme, $path) {
+  $themes = array(
+    'pond_payments_user_financials' => array(
+      'variables' => array(
+        'finances' => NULL,
+      ),
+    ),
+    'pond_payments_pdf_content' => array(
+      'variables' => array(
+        'payment_id' => 0,
+        'payment_date' => '',
+        //These are defaults only. They get replaced by the actual currency.
+        'currency' => 'AUD',
+        'currency_symbol' => '$',
+        'name' => '',
+        'address' => '',
+        'amount' => 0,
+        'amount_owing' => 0,
+      ),
+      'template' => 'tpl/pond_payments_pdf_content'
+    ),
+  );
+  return $themes;
+}
+
+function theme_pond_payments_user_financials($vars){
+  $finances = $vars['finances'];
+  if($finances['prices']){
+    foreach($finances['prices'] as $price){
+      $rows[] = array($price['title'], $price['formatted']);
+    }
+  }
+  $rows[] = array('<strong>Total:</strong>', '<strong>'.$finances['price_formatted'].'</strong>');
+  if(!empty($finances['payments'])){
+    foreach($finances['payments'] as $payment_id => $payment){
+      $delete = (user_access('delete payments') && $payment['method_controller'] == 'PaymentMethodBasicController')?' ('.l('Delete', 'payment/'.$payment_id.'/delete', array('query' => drupal_get_destination())).')':'';
+      $receipt = ' ('.l('Receipt', 'pdf_download/'.$payment_id).')';
+      $rows[] = array('PAYMENT: '.$payment['method'].' - '.$payment['date_formatted'].$receipt.$delete, $payment['amount_formatted']);
+    }
+  } else {
+      $rows[] = array('No Payments Recorded Yet', '-');
+  }
+  $rows[] = array('<strong>Outstanding:</strong>', '<strong>'.$finances['owing_formatted'].'</strong>');
+  return theme('table', array('rows' => $rows));
+}
+
+/**
+ * Implements hook_payway_payment_token_parameters().
+ */
+function pond_payments_payway_payment_token_parameters($parameters, $payment) {
+  $info = pond_get_by_uid($payment->uid);
+  $parameters['information_fields'] = 'Name,Location';
+  $parameters['Name'] = $info['full_name'];
+  $parameters['Location'] = $info['location_formatted'];
+  return $parameters;
+}
+
+
+
+/*
+ * Gets passed a comma-seperated list of uids from VBO
+ */
+function pond_payments_bulk_payment_form($uids=0) {
+  $uids_array = explode(',', $uids);
+  foreach($uids_array as $uid){
+    $info = pond_get_by_uid($uid);
+    $names[] = array($info['base_title']);
+  }
+  
+  $return['names'] = array(
+    '#markup' => theme_item_list(array('items' => $names, 'title' => 'Selected Registrations', 'type' => 'ul', 'attributes' => array())),
+  );
+
+  if(module_exists('payment_arbitrary')) {
+    $return['form'] = drupal_get_form('payment_arbitrary_form', $uids_array, array('build_type' => 'bulk'));
+  }
+  
+  return $return;
+}
+
+/**
+ * Implements hook_form_alter()
+ */
+function pond_payments_form_alter(&$form, &$form_state, $form_id){
+  if($form_id == 'payway_payment_paymentform'){
+    $payment = $form_state['build_info']['args'][0];
+    $info = pond_get_by_uid($payment->uid);
+    $form['information_fields'] = array(
+        '#type' => 'hidden',
+        '#value' => 'Name,Location',
+    );
+    $form['Name'] = array(
+        '#type' => 'hidden',
+        '#value' => $info['full_name'],
+    );
+    $form['Location'] = array(
+        '#type' => 'hidden',
+        '#value' => $info['location_formatted'],
+    );
+    $form['user'] = array(
+        '#type' => 'item',
+        '#title' => 'Payment For',
+        '#markup' => $info['full_name'] . ' - ' . $info['year'],
+        '#weight' => -99,
+    );
+  }
+  if($form_id == 'payment_arbitrary_form'){
+    $usernames = array();
+    $uid = $form_state['build_info']['args'][0];
+    if(!is_array($uid)){
+      $account = user_load($uid);
+      if(isset($account->uid)){
+        //Todo: Because this isn't going through get_by_uid() it won't be cached. Consider revising.
+        $info = pond_payments_get_financials($account->uid);//By not passing in a year, it will get pond_year.
+        if($info['owing'] > 0){
+          //Set the default value of the form to the amount owing.
+          $form['payment_amount']['#default_value'] = $info['owing'];
+        }
+      }
+    } else {
+      foreach($uid as $value){
+        $account = user_load($value);
+        $info = pond_payments_get_financials($account->uid);
+        $usernames[] = $account->name;
+      }
+    }
+
+    //$currency = pond_nations_get_currency();
+    $currency = currency_load($info['currency']);
+    $form['payment_amount']['#field_prefix'] = $currency->sign;
+    $form_state['currency_code'] = $currency->ISO4217Code;
+  
+    //todo: If it is an array, how do we set currency?
+    if(isset($form_state['build_info']['args'][1]['build_type'])){
+      switch($form_state['build_info']['args'][1]['build_type']){
+        case 'personal':
+          $form['payment_description']['#access'] = FALSE;
+          $form['payment_user']['#access'] = FALSE;
+          $form['payment_method']['#value'] = $info['method'];
+          $form['payment_method']['#access'] = FALSE;
+        break;
+        case 'bulk':
+          $form['payment_user'] = array('#type' => 'value', '#value' => $usernames);
+        break;
+        case 'donation':
+          $form['payment_amount']['#title'] = t('Amount');
+          $form['payment_description']['#title'] = t('Description');
+          $form['submit']['#value'] = t('Donate Now');
+          $form['payment_method']['#value'] = 4;//Todo: I'm only setting this manually because payment module doesn't have granular permissions per method.
+          $form['payment_method']['#access'] = FALSE;
+        break;
+      }
+    }
+    /* This was to assign years via payment status created timestamp, but that is probably a bad idea. Should actually record a year field in our own table...
+    $year = pond_get_year();
+    if($year != date('Y')){
+      $month = ($year < date('Y')) ? '12' : '01';
+      $day = ($year < date('Y')) ? '31' : '01';
+      $form['payment_date']['#default_value'] = array('day' => $day, 'month' => $month, 'year' => $year);
+
+      
+      //$new_date = ($year < date('Y')) ? $year . '-12-31'  : $year . '-01-01';
+      //$new_time = strtotime($new_date);
+    }*/
+  }
+}
+
+
+
+  /*ToDo: I've removed this from the generic PayWay module... add these fields through a form_alter in a Pond module.
+  $form['information_fields'] = array(
+      '#type' => 'hidden',
+      '#value' => $parameters['information_fields'],
+  );
+  $form['Name'] = array(
+      '#type' => 'hidden',
+      '#value' => $parameters['Name'],
+  );
+  $form['Location'] = array(
+      '#type' => 'hidden',
+      '#value' => $parameters['Location'],
+  );
+  $form['user'] = array(
+      '#type' => 'item',
+      '#title' => 'User',
+      '#markup' => $user->field_first_name['und'][0]['value'].' '.$user->field_last_name['und'][0]['value'],
+  );
+  */
+
+/* To do - this was a custom block on the user page...
+
+  $uid = %user:uid;
+  $finances = pond_payments_get_financials($uid);
+  if($finances['prices']){
+    foreach($finances['prices'] as $price){
+      $rows[] = array($price['title'], $price['formatted']);
+    }
+  }
+  $rows[] = array('<strong>Total:</strong>', '<strong>'.$finances['price_formatted'].'</strong>');
+  if(!empty($finances['payments'])){
+    foreach($finances['payments'] as $payment){
+      $rows[] = array('PAYMENT: '.$payment['method'].' - '.$payment['date_formatted'], $payment['amount_formatted']);
+    }
+  } else {
+      $rows[] = array('No Payments Recorded Yet', '-');
+  }
+  $rows[] = array('<strong>Outstanding:</strong>', '<strong>'.$finances['owing_formatted'].'</strong>');
+  $prices_output = theme('table', array('rows' => $rows));
+
+  $return = $prices_output;
+
+  if($finances['owing'] > 0){
+    $return .=  '
+        <form action="https://pond.redfrogs.net.au/payway" method="GET">
+          <input type="hidden" name="uid" value="'.$uid.'">
+          <div class="form-item form-type-textfield">
+           <label for="enter_amount">Enter Payment Amount </label>
+           <input type="text" id="enter_amount" name="amount" value="'.$finances['owing'].'" class="form-text">
+          </div>
+          <input type="submit" id="edit-submit" name="" value="Pay Now" class="form-submit">
+        </form>';
+  }
+  print $return;
+
+*/
+
+
+######### API #########
+
+
+/**
+ * Get all the user's financial details. 
+ * Includes a call to get payments.
+ * Includes a call to calculate.
+ */
+function pond_payments_get_financials($uid, $year=FALSE, $cache=TRUE){
+  $year = ($year)?$year:pond_get_year();
+
+  //Find out how much has been paid this year
+  $payments = pond_payments_get_payments($uid, $year);
+  
+  //Find out cost of this year's rego
+  $cost = 0;
+  $sign = '$';//default value
+  //$year_range = array(strtotime($year.'-01-01'),strtotime($year.'-12-31'));
+  $query = new EntityFieldQuery();
+  $result = $query->entityCondition('entity_type', 'registrations')
+          ->entityCondition('bundle', 'registrations')
+          ->propertyCondition('uid', $uid)
+          ->propertyCondition('year', $year)
+          //->propertyCondition('created', $year_range, 'BETWEEN')
+          ->execute();
+  if (isset($result['registrations']) && !empty($result['registrations'])) {
+    $rego_nid = key($result['registrations']);
+    $regos = entity_load('registrations', array($rego_nid));
+    $query = pond_relation_get('registrations', $rego_nid, 'has_applied_for_location');
+    if(is_array($query['has_applied_for_location'])){
+      foreach($query['has_applied_for_location'] as $value){
+        $location = $value->endpoints['und'][1]['entity_id'];
+      }
+    }
+    $query = pond_relation_get('registrations', $rego_nid, 'has_applied_for_dates');
+    if(is_array($query['has_applied_for_dates'])){
+      foreach($query['has_applied_for_dates'] as $value){
+        $dates[] = $value->endpoints['und'][1]['entity_id'];
+      }
+    }
+    if(!isset($location) || !isset($dates)){
+      return array();
+    }
+    $currency = pond_nations_get_location_currency($location);
+    $sign = $currency->sign;
+    $method = pond_nations_get_location_method($location);
+    $options = array(
+        'location' => $location,
+        'dates' => $dates,
+        'accommodation' => $regos[$rego_nid]->field_accommodation['und'][0]['value'],
+        'dietary' => $regos[$rego_nid]->field_dietary['und'][0]['value'],
+        'date_booked' => $regos[$rego_nid]->created,
+        'year' => $year,
+    );
+    $prices = pond_payments_calculate($options);
+    if($prices){
+      foreach($prices as $price){
+        $cost += (is_numeric($price['raw']))?$price['raw']:0;
+      }
+    }
+  }
+
+  //Return amounts
+  return array(
+      'currency' => isset($currency)?$currency->ISO4217Code:'AUD',
+      'method' => isset($method)?$method:4,
+      'payments' => $payments['payments'],
+      'prices' => isset($prices)?$prices:array(),
+      'price' => $cost,
+      'price_formatted' => $sign.number_format($cost,2),
+      'paid' => $payments['total_paid'], 
+      'paid_formatted' => $sign.number_format($payments['total_paid'],2),
+      'owing' => ($cost-$payments['total_paid']),
+      'owing_formatted' => $sign.number_format(($cost-$payments['total_paid']),2),
+      );
+}
+
+
+/**
+ * Retrieve Payments by uid.
+ * If year is not set, return payments from all years
+ */
+function pond_payments_get_payments($uid, $year=FALSE){
+  $total_paid = 0;
+  $payments = array();
+
+  $query = new EntityFieldQuery();
+  $result = $query->entityCondition('entity_type', 'payment')
+          ->propertyCondition('uid', $uid)
+          ->execute();
+
+  if (isset($result['payment'])) {
+    $ids = array_keys($result['payment']);
+    $entities = entity_load('payment', $ids);
+    foreach($entities as $id => $payment){
+      $status = $payment->getStatus();
+      $payment_year = date('Y', $status->created);
+      if($status->status == 'payment_status_success' && ($year && $payment_year == $year)){
+        $currency = currency_load($payment->currency_code);
+        $payments[$id]['amount'] = $payment->totalAmount(1);
+        $total_paid += $payments[$id]['amount'];
+        $payments[$id]['amount_formatted'] = $currency->sign.number_format($payments[$id]['amount'],2);
+        $payments[$id]['method'] = $payment->method->title_generic;
+        $payments[$id]['method_controller'] = $payment->method->controller->name;
+        $payments[$id]['date'] = date('Y-m-d H:i', $status->created);
+        $payments[$id]['date_formatted'] = date('j M Y g:ia', $status->created);
+      }
+    }
+  }
+  
+  return array('total_paid' => $total_paid, 'payments' => $payments);
+}
+
+/*
+ * $options = array(
+ *  'location' => $id,
+ *  'dates' => array($id1, $id2, $id3),
+ *  'accommodation' => FALSE //Defaults to TRUE
+ *  'dietary' => FALSE
+ *  'date_booked' => timestamp
+ *  'year' => 2012 
+ * )
+ * 
+ * RETURNS:
+ * array(
+ *  'raw' = 1203 //Or FALSE on error
+ *  'formatted' = '$1,203.00'
+ * )
+ */
+function pond_payments_calculate($options){
+  switch(1){
+    case empty($options['location']):
+    case empty($options['dates']):
+      return FALSE;
+  }
+
+  $currency = pond_nations_get_location_currency($options['location']);
+  $earlybird = pond_nations_get_location_earlybird($options['location']);
+  $earlybird = !empty($earlybird) ? $earlybird : variable_get('pond_earlybird_cutoff');
+  $time = empty($options['date_booked'])? time() : $options['date_booked'];
+  
+  $prices = array();
+  $dates = pond_regos_unique_nights($options['dates']);
+  //debug($dates);
+  $dates = entity_load('night', $dates);
+  foreach($dates as $date){
+    $entity_keys = array(
+        array('entity_type' => 'location', 'entity_id' => $options['location']),
+        array('entity_type' => 'night', 'entity_id' => $date->id),
+    );
+    $relations = relation_relation_exists($entity_keys, 'allows_bookings_for');
+    if(!empty($relations)){
+      $relation = relation_load(key($relations));
+      //debug($relation->field_price_early_accom['und'][0]['value']);
+      //debug($relation);
+      
+      if(isset($options['accommodation']) && $options['accommodation'] == FALSE){
+        $accom = 'rego';
+        $title = pond_get_block_title($date, $relation, 3) . ' - No Accommodation';
+      } else {
+        $accom = 'accom';
+        $title = pond_get_block_title($date, $relation, 3) . ' - Accommodation Included';
+      }
+      
+      $string = isset($options['year'])?$options['year']:pond_get_year();
+      $string .= '-'.$earlybird;
+      if($time > strtotime($string)){
+        $early = 'normal';
+      } else {
+        $early = 'early';
+        $title .= ' - Earlybird';
+      }
+      
+      $string = "field_price_{$early}_{$accom}";
+      if(!empty($relation->{$string}['und'][0]['value'])){
+        $prices[] = array(
+          'title' => $title,
+          'raw' => $relation->{$string}['und'][0]['value'], 
+          'formatted' => $currency->sign.number_format($relation->{$string}['und'][0]['value'],2)
+        );
+      } else {
+        $prices[] = array(
+          'title' => $title,
+          'raw' => FALSE, 
+          'formatted' => t('Unable to calculate price.')
+        );
+      }
+      
+      if(!empty($options['dietary']) && $accom == 'accom' && !empty($relation->field_dietary_discount['und'][0]['value'])){
+        $prices[] = array(
+          'title' => 'Refund for special dietary requirements.',
+          'raw' => -$relation->field_dietary_discount['und'][0]['value'], 
+          'formatted' => '-'.$currency->sign.number_format($relation->field_dietary_discount['und'][0]['value'],2)
+        );
+      }
+    }
+  }
+  return $prices;
+}

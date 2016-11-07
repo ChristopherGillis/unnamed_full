@@ -1,0 +1,20 @@
+<?php
+
+
+/**
+ * @file
+ * Provide views data and handlers for the Pond.
+ *
+ * @ingroup views_module_handlers
+ */
+
+/**
+ * Implements hook_views_api().
+ */
+function pond_views_views_api(){
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'pond_views') . '/includes',
+    );
+}
+

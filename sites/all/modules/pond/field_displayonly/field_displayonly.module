@@ -1,0 +1,140 @@
+<?php
+/**
+ * @file
+ * An example field using the Field Types API.
+ */
+
+/**
+ * @defgroup field_displayonly Example: Field Types API
+ * @ingroup examples
+ * @{
+ * Examples using Field Types API.
+ *
+ * This is updated from Barry Jaspan's presentation at Drupalcon Paris,
+ * @link http://acquia.com/community/resources/acquia-tv/intro-field-api-module-developers Video Presentation @endlink
+ *
+ * Providing a field requires:
+ * - Defining a field:
+ *   - hook_field_info()
+ *   - hook_field_schema()
+ *   - hook_field_validate()
+ *   - hook_field_is_empty()
+ *
+ * - Defining a formatter for the field (the portion that outputs the field for
+ *   display):
+ *   - hook_field_formatter_info()
+ *   - hook_field_formatter_view()
+ *
+ * - Defining a widget for the edit form:
+ *   - hook_field_widget_info()
+ *   - hook_field_widget_form()
+ *
+ * Our module defines the field in field_displayonly_field_info(),
+ * field_displayonly_field_validate() and field_displayonly_field_is_empty().
+ * field_displayonly_field_schema() is implemented in field_displayonly.install.
+ *
+ * Our module sets up a formatter in field_displayonly_field_formatter_info() and
+ * field_displayonly_field_formatter_view(). These are the API hooks that present
+ * formatted and themed output to the user.
+
+ * And finally, our module defines the widet in
+ * field_displayonly_field_widget_info() and field_displayonly_field_widget_form().
+ * The widget is the form element used to receive input from the user
+ * when the field is being populated.
+ *
+ * @see field_types
+ * @see field
+ */
+
+/***************************************************************
+ * Field Type API hooks
+ ***************************************************************/
+
+/**
+ * Implements hook_field_info().
+ *
+ * Provides the description of the field.
+ */
+function field_displayonly_field_info() {
+  return array(
+    // We name our field as the associative name of the array.
+    'field_displayonly' => array(
+      'label' => t('Display Only'),
+      'description' => t('Display a piece of html in the form, instead of an input.'),
+      'default_widget' => 'field_displayonly',
+      'default_formatter' => 'text_default',
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_field_is_empty().
+ *
+ * hook_field_is_emtpy() is where Drupal asks us if this field is empty.
+ * Return TRUE if it does not contain data, FALSE if it does. This lets
+ * the form API flag an error when required fields are empty.
+ */
+function field_displayonly_field_is_empty($item, $field) {
+  return TRUE;//Always true because there is no input
+}
+
+
+
+/**
+ * Implements hook_field_widget_info().
+ * 
+ * These widget types will eventually show up in hook_field_widget_form,
+ * where we will have to flesh them out.
+ *
+ * @see field_displayonly_field_widget_form()
+ */
+function field_displayonly_field_widget_info() {
+  return array(
+    'field_displayonly' => array(
+      'label' => t('Display Only'),
+      'field types' => array('field_displayonly'),
+    ),
+  );
+}
+
+function field_displayonly_field_widget_settings_form($field, $instance) {
+  $widget = $instance['widget'];
+  $settings = $widget['settings'];
+
+    $form['markup'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Whatever you would like to display on the form.'),
+      '#default_value' => !empty($settings['markup'])?$settings['markup']:'',
+    );
+    $form['label'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Would you like the label to show?'),
+      '#default_value' => !empty($settings['label'])?$settings['label']:0,
+    );
+
+  return $form;
+}
+
+/**
+ * Implements hook_field_widget_form().
+ *
+ * hook_widget_form() is where Drupal tells us to create form elements for
+ * our field's widget.
+ */
+function field_displayonly_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $widget = $element;
+  $widget['#delta'] = $delta;
+  
+  $widget += array(
+    '#type' => 'item',
+    '#markup' => !empty($instance['widget']['settings']['markup'])?$instance['widget']['settings']['markup']:'',
+  );
+  if(empty($instance['widget']['settings']['label'])){
+    unset($widget['#title']);
+  }
+
+  $element['displayonly'] = $widget;
+  return $element;
+}
+

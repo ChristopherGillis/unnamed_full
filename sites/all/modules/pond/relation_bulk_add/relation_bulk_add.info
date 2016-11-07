@@ -1,0 +1,5 @@
+name = Relation Bulk Add
+description = Easily create relationships from one to multiple entities
+dependencies[] = relation
+package = "Relation"
+core = 7.x

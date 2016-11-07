@@ -1,0 +1,330 @@
+<?php
+
+/**
+ * Implementation of hook_menu
+ */
+function pond_pastoralchecks_menu(){
+  $items = array();
+  
+  $items['pond/approval-form'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pond_pastoralchecks_approval_form'),
+    'access arguments' => array('approve registrations'),
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+function pond_pastoralchecks_permission() {
+  return array(
+    'check registrations' => array(
+      'title' => t('Perform Pastoral Checks'),
+    ),
+    'approve registrations' => array(
+      'title' => t('Perform Approvals'),
+    )
+  );
+}
+
+/*
+ * Gets passed an comma-seperated list of uids from VBO
+ */
+function pond_pastoralchecks_approval_form($form = array(), &$form_state, $uids=0) {
+  $uids_array = explode(',', $uids);
+  foreach($uids_array as $uid){
+    //Output a list of people, and what they have applied for,
+    /*
+    $form['location-applied'] = array(
+      '#type' => 'item',
+      '#title' => t('Applied for Location'),
+      '#value' => 'TBA',//Get the default
+    );
+    */
+  }
+  
+  
+  $form['uids'] = array(
+    '#type' => 'value',
+    '#value' => $uids,
+  );
+  
+  
+  //Select a Location
+  $locations = entity_load('location');
+  foreach($locations as $key => $value){
+    if(!empty($value->field_active['und'][0]['value'])){
+      $locations_options[$key] = $value->title;
+    }
+  }
+  asort($locations_options);
+  $locations_options = array(0 => 'Select a Location')+$locations_options;
+
+  $form['location'] = array(
+    '#type' => 'select',
+    '#title' => t('Change Location'),
+    '#options' => $locations_options,
+    '#default_value' => 0,
+  );
+  
+  //Select a Role
+  $roles = entity_load('volunteer_role');
+  foreach($roles as $key => $value){
+    $roles_options[$key] = $value->title;
+  }
+  asort($roles_options);
+  $roles_options = array(0 => 'Select a Role')+$roles_options;
+  
+  $form['relations']['volunteer_role'] = array(
+    '#type' => 'select',
+    '#title' => t('Change Role'),
+    '#options' => $roles_options,
+    '#default_value' => 0,
+  );
+  
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Approve'),
+      '#weight' => 1000,
+  );
+  
+  
+  return $form;
+}
+
+function pond_pastoralchecks_approval_form_submit($form, &$form_state){
+  $uids = explode(',', $form_state['values']['uids']);
+  foreach($uids as $uid){
+    $info = pond_get_by_uid($uid);
+    
+    $worker = entity_load('worker', array($info['worker']));
+    $worker = $worker[$info['worker']];
+    $worker->field_worker_status['und'][0]['value'] = 'Approved';
+    $worker->save();
+  
+    ## Location
+    $new_location = $form_state['values']['location'];
+    if(!empty($new_location)){
+      $query = pond_relation_get('registrations', $info['registrations'], 'has_applied_for_location');
+      if(is_array($query['has_applied_for_location'])){
+        foreach($query['has_applied_for_location'] as $value){
+          if($value->endpoints['und'][1]['entity_id'] != $new_location){
+            // Has not been selected in the form, so delete it and make the new one.
+            relation_delete($value->rid);
+            $relation = relation_create('has_applied_for_location', array(
+              array('entity_type' => 'registrations', 'entity_id' => $info['registrations']),
+              array('entity_type' => 'location', 'entity_id' => $new_location),
+            ));
+            $rid = relation_save($relation);
+          }
+        }
+      }
+    }
+
+    ## Role
+    $new_role = $form_state['values']['volunteer_role'];
+    if(!empty($new_role)){
+      $query = pond_relation_get('registrations', $info['registrations'], 'has_applied_for_role');
+      if(is_array($query['has_applied_for_role'])){
+        foreach($query['has_applied_for_role'] as $value){
+          if($value->endpoints['und'][1]['entity_id'] != $new_role){
+            // Has not been selected in the form, so delete it and make the new one.
+            relation_delete($value->rid);
+            $relation = relation_create('has_applied_for_role', array(
+              array('entity_type' => 'registrations', 'entity_id' => $info['registrations']),
+              array('entity_type' => 'volunteer_role', 'entity_id' => $new_role),
+            ));
+            $rid = relation_save($relation);
+          }
+        }
+      }
+    }
+    
+    
+  }
+  drupal_set_message('Approved');
+  drupal_goto('dash/approve');
+}
+
+
+function pond_pastoralchecks_entity_view($entity, $type, $view_mode, $langcode) {
+  global $user;//for permissions checks
+  $year = pond_get_year();
+  if ($type == 'referee') {
+    $output = '<div class="referrals"><h2>References</h2>';
+    $query = pond_relation_get('referee', $entity->id, 'listed_referee');
+    if (!empty($query['listed_referee'])) {
+      foreach ($query['listed_referee'] as $rel1) {
+        $regoid_list[] = $rel1->endpoints['und'][0]['entity_id'];
+      }
+      $regos = entity_load('registrations', $regoid_list);
+      foreach ($regos as $registration) {
+        if($registration->year == $year){
+          $info = pond_get_by_uid($registration->uid);
+          if($info['registrations']){
+            $worker = entity_load('worker', array($info['worker']));
+            $status = $worker[$info['worker']]->field_worker_status['und'][0]['value'];
+
+            if ($status != 'Applied') {
+              $output .= '<h3 class="title-checked">' . $registration->title . ' - '.$status.'</h3>';
+            } else {
+              
+              $output .= '<h3>' . $registration->title . '</h3>';
+              
+              $location = entity_load('location', array($info['location']));
+              
+              if(!pond_management_access_check_location(array($info['location']))){
+                $output .= '<p><strong>Location:</strong> ' . $location[$info['location']]->title . '</p>';
+                continue;//No permissions. Jump straight to the next one.
+              }
+              
+              
+              if (empty($info['reference'])) {
+                //If there is no reference, we need to make one.
+                $form = drupal_get_form('pond_pastoralchecks_entity_view_form_' . $registration->uid, $registration->uid);
+                $output .= drupal_render($form);
+              } else {
+                //If there is a reference, we need to edit it.
+                $output .= drupal_render(drupal_get_form('pond_pastoralchecks_entity_view_form_' . $registration->uid, $registration->uid, $info['reference']));
+              }
+
+              $rego = entity_load('registrations', array($info['registrations'])); //We've Already got this one!
+              
+              $volunteer_role = entity_load('volunteer_role', array($info['volunteer_role']));
+              $church = entity_load('church', array($info['church']));
+              //debug($rego[$info['registrations']]);
+              $experience_years = array();
+              if(isset($rego[$info['registrations']]->field_experience['und'][0]['value'])) {
+                foreach($rego[$info['registrations']]->field_experience['und'] as $expyear) {
+                  $experience_years[] = $expyear['value'];
+                }
+              }
+              //Epically long isset checks because we are still on PHP 5.2 - no shorthand ternaries
+              $details = array(
+                  'Status' => $status,
+                  'Location' => $location[$info['location']]->title,
+                  'Dates' => $info['dates_formatted'],
+                  'Preferred Role' => $volunteer_role[$info['volunteer_role']]->title,
+                  'Church' => $church[$info['church']]->title,
+                  'Years Attended' => isset($rego[$info['registrations']]->field_church_attendance['und'][0]['value']) ? $rego[$info['registrations']]->field_church_attendance['und'][0]['value'] : '',
+                  'Serving Areas' => isset($rego[$info['registrations']]->field_church_involvement['und'][0]['value']) ? $rego[$info['registrations']]->field_church_involvement['und'][0]['value'] : '',
+                  'Positive Attributes' => isset($rego[$info['registrations']]->field_positive_attributes['und'][0]['value']) ? $rego[$info['registrations']]->field_positive_attributes['und'][0]['value'] : '',
+                  'Concerns' => isset($rego[$info['registrations']]->field_concerns['und'][0]['value']) ? $rego[$info['registrations']]->field_concerns['und'][0]['value'] : '',
+                  'Past Experience' => implode(', ', $experience_years),
+              );
+              $output .= '<div class="referral-details">';
+              foreach ($details as $label => $value) {
+                if (!empty($value)) {
+                  $output .= '<p><strong>' . $label . ':</strong> ' . $value . '</p>';
+                }
+              }
+              $output .= '</div>';
+            }
+          }
+        }
+        //$output .= '</div>';
+      }
+      $output .= '</div>';
+      $entity->content['reference_forms'] = array(
+          '#markup' => $output,
+          '#weight' => 10,
+      );
+    }
+  }
+}
+
+function pond_pastoralchecks_entity_view_form($form = array(), &$form_state, $uid=0, $refid=0) {
+  //Load the fields of the relevant ref entity (or make a new entity if none)
+  //debug($uid);
+  //debug($refid);
+
+  $form['uid'] = array('#type' => 'value', '#value' => $uid);
+
+  // fieldset so we an collapse it
+  $form['edit'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Fill Out Pastoral Check'),
+      '#tree' => FALSE,
+      '#collapsed' => TRUE,
+      '#collapsible' => TRUE,
+  );
+
+  if (empty($refid)) {
+    //Create an entity so we can extract all the fields required
+    $entity = entity_create('reference', array('type' => 'reference'));
+  } else {
+    $entity = entity_load('reference', array($refid));
+    $entity = $entity[$refid];
+  }
+
+  // Add all the entity fields to this form
+  field_attach_form('reference', $entity, $form['edit'], $form_state);
+
+
+  // Submit Button
+  $form['edit']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save'),
+      '#weight' => 1000,
+  );
+
+  $form['#submit'][] = 'pond_pastoralchecks_entity_view_form_submit';
+
+  return $form;
+}
+
+/*
+ * 
+
+ */
+
+function pond_pastoralchecks_entity_view_form_submit($form, &$form_state) {
+
+  //debug($form_state['values']);
+
+  $info = pond_get_by_uid($form_state['values']['uid']);
+  $year = pond_get_year();
+
+  if (empty($info['reference'])) {
+    //New Reference
+    $entity = entity_create('reference', array('type' => 'reference'));
+    $entity->title = $info['base_title'] . ' Ref' . substr($year, 2, 2);
+    if (!empty($form_state['values']['uid'])) {
+      $entity->uid = $form_state['values']['uid'];
+    }
+    $entity->created = REQUEST_TIME;
+    $entity->year = $year;
+  } else {
+    //Edit Reference
+    $entity = entity_load('reference', array($info['reference']));
+    $entity = $entity[$info['reference']];
+  }
+
+  field_attach_form_validate($entity->entityType(), $entity, $form, $form_state);
+  field_attach_submit($entity->entityType(), $entity, $form, $form_state);
+  $entity->save();
+
+  if ($form_state['values']['field_ref_recommended']['und'][0]['value'] != NULL) {
+    //Mark as checked.
+    $worker = entity_load('worker', array($info['worker']));
+    $worker = $worker[$info['worker']];
+    $worker->field_worker_status['und'][0]['value'] = 'Checked';
+    $worker->save();
+    //debug($worker);
+  }
+}
+
+/*
+ * Implement hook_forms()
+ */
+
+function pond_pastoralchecks_forms($form_id, $args) {
+  //Redirect any form id like this: pond_pastoralchecks_entity_view_form_22();
+  //debug($form_id);
+  if (strpos($form_id, 'pond_pastoralchecks') !== FALSE) {
+    $forms[$form_id] = array(
+        'callback' => 'pond_pastoralchecks_entity_view_form',
+    );
+    return $forms;
+  }
+}
+

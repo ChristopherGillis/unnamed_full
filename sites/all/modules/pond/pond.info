@@ -1,0 +1,7 @@
+name = Pond Core
+description = The Core Functions
+package = "Pond Modules"
+dependencies[] = eck
+dependencies[] = relation
+core = 7.x
+configure = admin/config/pond/pond

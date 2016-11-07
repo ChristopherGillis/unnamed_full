@@ -1,0 +1,4 @@
+name = Pond Sandbox
+description = Temporary functions to run. Functions are hot. Not suitable for live site.
+package = "Pond Modules"
+core = 7.x
